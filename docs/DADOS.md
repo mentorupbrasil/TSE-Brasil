@@ -23,3 +23,6 @@ Quando a consulta automática ao DivulgaCandContas ou à API CKAN retorna bloque
 
 O fallback não usa fonte de terceiros; continua usando arquivos oficiais do TSE.
 
+
+## Dados de simulação
+Os dados criados na área `/simulacao` não pertencem às bases do TSE. São lançamentos manuais e hipotéticos armazenados localmente no navegador. O sistema não os apresenta como resultado oficial nem como previsão. Para cargos proporcionais (deputado federal e estadual), o módulo permite separar lançamentos nominais e de legenda; para os demais cargos, o tipo legenda não é oferecido.

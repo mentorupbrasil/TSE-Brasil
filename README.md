@@ -43,3 +43,10 @@ npm run check
 ## Resiliência das fontes
 A versão 3.1 possui fallback automático para os arquivos ZIP do CDN oficial do TSE quando os endpoints DivulgaCand/CKAN recusam chamadas server-side (por exemplo, HTTP 403 em provedores serverless). O navegador também mantém por até 24 horas a última resposta válida para contingência local, sempre sinalizada como dado em cache.
 
+
+
+## Módulo de simulação manual
+
+A versão 4.0 inclui um ambiente local de simulação de lançamentos. Os dados são inseridos manualmente e armazenados no navegador do usuário (localStorage). Eles não são resultados oficiais, não são enviados ao TSE e não constituem previsão eleitoral.
+
+O módulo permite criar múltiplos cenários, lançar quantidades por cargo, município, zona, seção, candidatura e partido; registrar votos nominais, votos de legenda nos cargos proporcionais, brancos e nulos; visualizar agregações descritivas em ordem alfabética; exportar CSV/JSON; importar backups; duplicar e limpar cenários.

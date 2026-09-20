@@ -39,11 +39,12 @@
       <a class="nav-link" href="/partidos" data-route="/partidos" data-nav="parties"><span>◆</span>Partidos</a>
       <a class="nav-link" href="/zonas" data-route="/zonas" data-nav="sections"><span>⌖</span>Zonas e seções</a>
       <a class="nav-link" href="/municipios" data-route="/municipios" data-nav="municipalities"><span>▤</span>Municípios</a>
+      <a class="nav-link" href="/simulacao" data-route="/simulacao" data-nav="simulation"><span>＋</span>Simulação de votos</a>
       <a class="nav-link" href="/fontes" data-route="/fontes" data-nav="sources"><span>ⓘ</span>Fontes e metodologia</a>
     </nav>
     <div class="sidebar-meta">
       <div><b>Portal independente</b><span>Organiza dados públicos da Justiça Eleitoral. Não é site oficial do TSE ou TRE-MA.</span></div>
-      <div class="sidebar-version">v3.0</div>
+      <div class="sidebar-version">v4.0</div>
     </div>
   </aside>
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -148,6 +149,61 @@
 
     <section class="page" id="page-municipality-detail" data-page="municipality-detail">
       <div id="municipalityDetail"></div>
+    </section>
+
+
+    <section class="page" id="page-simulation" data-page="simulation">
+      <div class="page-head">
+        <div><span class="eyebrow">AMBIENTE DE SIMULAÇÃO MANUAL</span><h1>Simulação de lançamentos de votos</h1><p>Registre cenários hipotéticos por cargo, município, zona, seção, candidatura e partido. Os lançamentos desta área são locais, manuais e não representam resultado oficial, previsão ou apuração.</p></div>
+        <div class="toolbar"><button class="btn ghost" id="simExportCsv">CSV</button><button class="btn ghost" id="simExportJson">Backup JSON</button><button class="btn ghost" id="simImportButton">Importar JSON</button><input type="file" id="simImportFile" accept="application/json,.json" hidden></div>
+      </div>
+      <div class="simulation-warning"><strong>SIMULAÇÃO</strong><span>Dados inseridos por você. Não são votos reais, não vêm do TSE e não devem ser interpretados como projeção de resultado.</span></div>
+
+      <div class="scenario-bar">
+        <label>Cenário<select id="simScenario"></select></label>
+        <button class="btn secondary" id="simNewScenario">Novo cenário</button>
+        <button class="btn ghost" id="simRenameScenario">Renomear</button>
+        <button class="btn ghost" id="simDuplicateScenario">Duplicar</button>
+        <button class="btn danger-ghost" id="simDeleteScenario">Excluir cenário</button>
+      </div>
+
+      <section class="panel simulation-entry-panel">
+        <div class="panel-head"><div><h2>Novo lançamento</h2><p>Escolha onde e para quem o voto simulado será contabilizado.</p></div></div>
+        <div class="simulation-form">
+          <label>Cargo<select id="simOffice"></select></label>
+          <label>Município<select id="simMunicipality"></select></label>
+          <label>Zona<select id="simZone"><option value="">Não especificada</option></select></label>
+          <label>Seção<select id="simSection"><option value="">Não especificada</option></select></label>
+          <label>Tipo de lançamento<select id="simVoteType"></select></label>
+          <label class="span-2" id="simCandidateWrap">Candidatura<select id="simCandidate"></select></label>
+          <label class="span-2" id="simPartyWrap">Partido<select id="simParty"></select></label>
+          <label>Quantidade<input id="simQuantity" type="number" min="1" max="10000000" step="1" value="1" inputmode="numeric"></label>
+          <label class="span-2">Observação opcional<input id="simNote" maxlength="120" placeholder="Ex.: lote de teste, urna simulada, planilha A"></label>
+          <div class="simulation-submit"><button class="btn primary" id="simAdd">Adicionar lançamento</button></div>
+        </div>
+        <div class="form-help" id="simVoteHelp"></div>
+      </section>
+
+      <div class="metrics six simulation-metrics">
+        <article><span>Total simulado</span><strong id="simMetricTotal">0</strong><small>lançamentos do cargo</small></article>
+        <article><span>Nominais</span><strong id="simMetricNominal">0</strong><small>em candidaturas</small></article>
+        <article><span>Legenda</span><strong id="simMetricLegend">0</strong><small>apenas proporcionais</small></article>
+        <article><span>Municípios</span><strong id="simMetricMunicipalities">0</strong><small>com lançamento</small></article>
+        <article><span>Candidaturas</span><strong id="simMetricCandidates">0</strong><small>com lançamento</small></article>
+        <article><span>Partidos</span><strong id="simMetricParties">0</strong><small>com lançamento</small></article>
+      </div>
+
+      <div class="simulation-summary-grid">
+        <section class="panel"><div class="panel-head"><div><h2>Por município</h2><p>Ordem alfabética; sem classificação de desempenho.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Município</th><th>Votos simulados</th><th>Candidaturas</th><th>Partidos</th></tr></thead><tbody id="simByMunicipality"></tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2>Por candidatura</h2><p>Somente lançamentos nominais; ordem alfabética.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Candidatura</th><th>Partido</th><th>Votos simulados</th><th>Municípios</th></tr></thead><tbody id="simByCandidate"></tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2>Por partido</h2><p>Nominais + legenda quando aplicável; ordem alfabética.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Partido</th><th>Nominais</th><th>Legenda</th><th>Total simulado</th></tr></thead><tbody id="simByParty"></tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2>Por zona</h2><p>Somente lançamentos com zona informada.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Município</th><th>Zona</th><th>Votos simulados</th><th>Seções</th></tr></thead><tbody id="simByZone"></tbody></table></div></section>
+      </div>
+
+      <section class="panel simulation-records">
+        <div class="panel-head"><div><h2>Lançamentos do cenário</h2><p>Histórico editável do cargo selecionado.</p></div><div class="toolbar"><input id="simRecordSearch" placeholder="Filtrar lançamentos"><button class="btn danger-ghost" id="simResetScenario">Limpar cenário</button></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Data/hora</th><th>Município</th><th>Zona</th><th>Seção</th><th>Tipo</th><th>Destino</th><th>Partido</th><th>Qtd.</th><th></th></tr></thead><tbody id="simLaunchesBody"></tbody></table></div>
+      </section>
     </section>
 
     <section class="page" id="page-sources" data-page="sources">

@@ -45,3 +45,6 @@ O arquivo `vercel.json` também define `"framework": null` para reforçar o pres
 ```bash
 npm run check
 ```
+
+## Simulação de votos (v4)
+A rota `/simulacao` é uma página interna do frontend e já está incluída nos rewrites do `vercel.json`. Os cenários e lançamentos ficam somente no `localStorage` do navegador; use o botão **Backup JSON** para transportar ou preservar um cenário.

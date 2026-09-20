@@ -9,6 +9,7 @@
     { "source": "/municipios/:path*", "destination": "/index.html" },
     { "source": "/partidos", "destination": "/index.html" },
     { "source": "/partidos/:path*", "destination": "/index.html" },
+    { "source": "/simulacao", "destination": "/index.html" },
     { "source": "/fontes", "destination": "/index.html" }
   ],
   "headers": [

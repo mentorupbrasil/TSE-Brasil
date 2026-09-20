@@ -17,7 +17,9 @@ const state = {
   sectionFilters: { zone: "", search: "", page: 1, pageSize: 50 },
   partyOffice: cfg.defaultOffice || "6",
   partySearch: "",
-  globalSearchTimer: null
+  globalSearchTimer: null,
+  simulation: null,
+  simulationRecordSearch: ""
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -93,6 +95,7 @@ function parseRoute() {
   if (parts[0] === "zonas") return { page: "sections" };
   if (parts[0] === "municipios" && parts[1]) return { page: "municipality-detail", slug: parts.slice(1).join("/") };
   if (parts[0] === "municipios") return { page: "municipalities" };
+  if (parts[0] === "simulacao") return { page: "simulation" };
   if (parts[0] === "fontes") return { page: "sources" };
   return { page: "overview", notFound: true };
 }
@@ -110,6 +113,7 @@ async function route() {
     if (routeInfo.page === "sections") { setBreadcrumbs([{ label: "Zonas e seções" }]); await loadSectionsPage(); }
     if (routeInfo.page === "municipalities") { setBreadcrumbs([{ label: "Municípios" }]); renderMunicipalities(); }
     if (routeInfo.page === "municipality-detail") await loadMunicipalityDetail(routeInfo.slug);
+    if (routeInfo.page === "simulation") { setBreadcrumbs([{ label: "Simulação de votos" }]); await loadSimulationPage(); }
     if (routeInfo.page === "sources") { setBreadcrumbs([{ label: "Fontes e metodologia" }]); await loadSourceHealthCards(); }
   } catch (error) {
     toast(error.message || "Não foi possível carregar esta área.");
@@ -117,7 +121,7 @@ async function route() {
 }
 
 function fillOfficeSelects() {
-  ["overviewOffice", "overviewPartyOffice", "candidateOffice", "partyOffice"].forEach(id => {
+  ["overviewOffice", "overviewPartyOffice", "candidateOffice", "partyOffice", "simOffice"].forEach(id => {
     const el = $("#" + id); if (!el) return;
     el.innerHTML = Object.entries(offices).map(([key, label]) => `<option value="${esc(key)}">${esc(label)}</option>`).join("");
   });
@@ -125,12 +129,15 @@ function fillOfficeSelects() {
   $("#overviewPartyOffice").value = state.office;
   $("#candidateOffice").value = state.office;
   $("#partyOffice").value = state.partyOffice;
+  if ($("#simOffice")) $("#simOffice").value = state.office;
 }
 
 function fillMunicipalitySelect() {
   const el = $("#sectionMunicipality");
   el.innerHTML = municipalities.map(([name, code]) => `<option value="${esc(name)}">${esc(name)} — IBGE ${esc(code)}</option>`).join("");
   el.value = state.municipality;
+  const simEl = $("#simMunicipality");
+  if (simEl) { simEl.innerHTML = el.innerHTML; simEl.value = state.municipality; }
 }
 
 async function getCandidates(office = state.office, refresh = false) {
@@ -442,6 +449,194 @@ async function loadSourceHealthCards() {
   $("#sourceHealthCards").innerHTML = card("Candidaturas / DivulgaCandContas", h.candidates) + card("Eleitorado / Dados Abertos", h.electorate);
 }
 
+
+const SIM_STORAGE_KEY = "civica-ma-simulacao-v1";
+
+function newId(prefix = "id") {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+}
+function emptySimulationStore() {
+  const id = newId("cenario");
+  return { version: 1, activeId: id, scenarios: [{ id, name: "Cenário 1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), entries: [] }] };
+}
+function loadSimulationStore() {
+  if (state.simulation) return state.simulation;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SIM_STORAGE_KEY) || "null");
+    if (parsed && Array.isArray(parsed.scenarios) && parsed.scenarios.length) state.simulation = parsed;
+  } catch {}
+  if (!state.simulation) state.simulation = emptySimulationStore();
+  if (!state.simulation.scenarios.some(s => s.id === state.simulation.activeId)) state.simulation.activeId = state.simulation.scenarios[0].id;
+  return state.simulation;
+}
+function saveSimulationStore() {
+  try { localStorage.setItem(SIM_STORAGE_KEY, JSON.stringify(loadSimulationStore())); } catch {}
+}
+function activeScenario() {
+  const store = loadSimulationStore();
+  return store.scenarios.find(s => s.id === store.activeId) || store.scenarios[0];
+}
+function renderScenarioSelect() {
+  const store = loadSimulationStore(), el = $("#simScenario"); if (!el) return;
+  el.innerHTML = store.scenarios.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
+  el.value = store.activeId;
+}
+function createScenario(name) {
+  const store = loadSimulationStore(), clean = String(name || "").trim(); if (!clean) return;
+  const scenario = { id: newId("cenario"), name: clean.slice(0, 60), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), entries: [] };
+  store.scenarios.push(scenario); store.activeId = scenario.id; saveSimulationStore(); renderScenarioSelect(); renderSimulation();
+}
+function simulationEntriesForOffice() {
+  const office = $("#simOffice")?.value || state.office;
+  return (activeScenario()?.entries || []).filter(e => String(e.office) === String(office));
+}
+function simulationVoteTypes(office) {
+  const proportional = ["6", "7"].includes(String(office));
+  return [
+    { value: "candidate", label: "Voto nominal em candidatura" },
+    ...(proportional ? [{ value: "legend", label: "Voto de legenda" }] : []),
+    { value: "blank", label: "Voto em branco" },
+    { value: "null", label: "Voto nulo" }
+  ];
+}
+async function populateSimulationCandidates() {
+  const office = $("#simOffice").value || state.office;
+  const candidateEl = $("#simCandidate"), partyEl = $("#simParty");
+  candidateEl.innerHTML = `<option value="">Carregando…</option>`; partyEl.innerHTML = `<option value="">Carregando…</option>`;
+  try {
+    const data = await getCandidates(office);
+    const candidates = [...(data.candidates || [])].sort((a, b) => String(a.name).localeCompare(String(b.name), "pt-BR"));
+    candidateEl.innerHTML = `<option value="">Selecione</option>` + candidates.map(c => `<option value="${esc(c.id || c.number)}">${esc(c.name)} — ${esc(c.party)} ${esc(c.number)}</option>`).join("");
+    const partyMap = new Map();
+    for (const c of candidates) if (c.party) partyMap.set(c.party, c.partyName || "");
+    const parties = [...partyMap.entries()].sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
+    partyEl.innerHTML = `<option value="">Selecione</option>` + parties.map(([sigla, name]) => `<option value="${esc(sigla)}" data-name="${esc(name)}">${esc(sigla)}${name ? ` — ${esc(name)}` : ""}</option>`).join("");
+  } catch (error) {
+    candidateEl.innerHTML = `<option value="">Candidaturas indisponíveis</option>`; partyEl.innerHTML = `<option value="">Partidos indisponíveis</option>`;
+  }
+  updateSimulationVoteMode();
+}
+async function populateSimulationZones() {
+  const municipality = $("#simMunicipality").value || state.municipality, zoneEl = $("#simZone"), sectionEl = $("#simSection");
+  zoneEl.innerHTML = `<option value="">Não especificada</option>`; sectionEl.innerHTML = `<option value="">Não especificada</option>`;
+  try {
+    const data = await getSections(municipality);
+    const zones = [...new Set((data.sections || []).map(x => String(x.zona)))].sort((a, b) => Number(a) - Number(b));
+    zoneEl.innerHTML += zones.map(z => `<option value="${esc(z)}">Zona ${esc(z)}</option>`).join("");
+  } catch {}
+}
+function populateSimulationSections() {
+  const municipality = $("#simMunicipality").value || state.municipality, zone = $("#simZone").value, el = $("#simSection");
+  el.innerHTML = `<option value="">Não especificada</option>`;
+  if (!zone) return;
+  const data = state.sectionData.get(municipality); if (!data) return;
+  const sections = (data.sections || []).filter(x => String(x.zona) === String(zone)).sort((a, b) => Number(a.secao) - Number(b.secao));
+  el.innerHTML += sections.map(x => `<option value="${esc(x.secao)}">Seção ${esc(x.secao)}</option>`).join("");
+}
+function updateSimulationVoteMode() {
+  const office = $("#simOffice").value || state.office, typeEl = $("#simVoteType");
+  const current = typeEl.value;
+  typeEl.innerHTML = simulationVoteTypes(office).map(x => `<option value="${x.value}">${x.label}</option>`).join("");
+  if ([...typeEl.options].some(o => o.value === current)) typeEl.value = current;
+  const type = typeEl.value;
+  $("#simCandidateWrap").hidden = type !== "candidate";
+  $("#simPartyWrap").hidden = type !== "legend";
+  const help = $("#simVoteHelp");
+  if (type === "legend") help.textContent = "Voto de legenda é usado apenas em eleições proporcionais. Aqui ele é registrado somente como dado simulado.";
+  else if (type === "candidate") help.textContent = "Lançamento nominal associado à candidatura selecionada. O valor é apenas parte do cenário local.";
+  else help.textContent = "Brancos e nulos ficam registrados separadamente e não são somados ao total de partidos/candidaturas.";
+}
+async function loadSimulationPage() {
+  loadSimulationStore(); renderScenarioSelect();
+  if ($("#simOffice")) $("#simOffice").value = state.office;
+  if ($("#simMunicipality")) $("#simMunicipality").value = state.municipality;
+  await Promise.all([populateSimulationCandidates(), populateSimulationZones()]);
+  updateSimulationVoteMode(); renderSimulation();
+}
+function addSimulationEntry() {
+  const scenario = activeScenario(); if (!scenario) return;
+  const office = $("#simOffice").value, municipality = $("#simMunicipality").value, zone = $("#simZone").value, section = $("#simSection").value, type = $("#simVoteType").value;
+  const quantity = Math.floor(Number($("#simQuantity").value));
+  if (!municipality) return toast("Selecione o município.");
+  if (!Number.isFinite(quantity) || quantity < 1 || quantity > 10000000) return toast("Informe uma quantidade entre 1 e 10.000.000.");
+  let candidateId = "", candidateName = "", candidateNumber = "", party = "", partyName = "";
+  const data = state.candidateData.get(String(office));
+  if (type === "candidate") {
+    const id = $("#simCandidate").value; const c = data?.candidates?.find(x => String(x.id || x.number) === String(id));
+    if (!c) return toast("Selecione uma candidatura.");
+    candidateId = String(c.id || c.number); candidateName = c.name || c.fullName || ""; candidateNumber = c.number || ""; party = c.party || ""; partyName = c.partyName || "";
+  }
+  if (type === "legend") {
+    party = $("#simParty").value; if (!party) return toast("Selecione o partido.");
+    const opt = $("#simParty").selectedOptions[0]; partyName = opt?.dataset?.name || "";
+  }
+  const entry = { id: newId("lanc"), at: new Date().toISOString(), office, officeLabel: officeLabel(office), municipality, zone: zone || "", section: section || "", type, candidateId, candidateName, candidateNumber, party, partyName, quantity, note: $("#simNote").value.trim().slice(0, 120) };
+  scenario.entries.push(entry); scenario.updatedAt = new Date().toISOString(); saveSimulationStore();
+  $("#simQuantity").value = "1"; $("#simNote").value = ""; renderSimulation(); toast("Lançamento simulado adicionado.");
+}
+function aggregateSimulation(entries) {
+  const municipalitiesMap = new Map(), candidatesMap = new Map(), partiesMap = new Map(), zonesMap = new Map();
+  for (const e of entries) {
+    const m = municipalitiesMap.get(e.municipality) || { municipality: e.municipality, total: 0, candidates: new Set(), parties: new Set() };
+    m.total += e.quantity; if (e.candidateId) m.candidates.add(e.candidateId); if (e.party) m.parties.add(e.party); municipalitiesMap.set(e.municipality, m);
+    if (e.type === "candidate") {
+      const key = e.candidateId || `${e.candidateName}|${e.candidateNumber}`; const c = candidatesMap.get(key) || { name: e.candidateName, number: e.candidateNumber, party: e.party, total: 0, municipalities: new Set() };
+      c.total += e.quantity; c.municipalities.add(e.municipality); candidatesMap.set(key, c);
+    }
+    if (e.party) {
+      const p = partiesMap.get(e.party) || { party: e.party, name: e.partyName || "", nominal: 0, legend: 0 };
+      if (e.type === "candidate") p.nominal += e.quantity; if (e.type === "legend") p.legend += e.quantity; partiesMap.set(e.party, p);
+    }
+    if (e.zone) {
+      const key = `${e.municipality}|${e.zone}`; const z = zonesMap.get(key) || { municipality: e.municipality, zone: e.zone, total: 0, sections: new Set() };
+      z.total += e.quantity; if (e.section) z.sections.add(e.section); zonesMap.set(key, z);
+    }
+  }
+  return {
+    municipalities: [...municipalitiesMap.values()].sort((a,b)=>a.municipality.localeCompare(b.municipality,"pt-BR")),
+    candidates: [...candidatesMap.values()].sort((a,b)=>a.name.localeCompare(b.name,"pt-BR")),
+    parties: [...partiesMap.values()].sort((a,b)=>a.party.localeCompare(b.party,"pt-BR")),
+    zones: [...zonesMap.values()].sort((a,b)=>a.municipality.localeCompare(b.municipality,"pt-BR") || Number(a.zone)-Number(b.zone))
+  };
+}
+function simEmptyRow(cols, text = "Nenhum lançamento neste recorte.") { return `<tr><td colspan="${cols}" class="sim-empty-cell">${esc(text)}</td></tr>`; }
+function renderSimulation() {
+  if (!$("#simLaunchesBody")) return;
+  renderScenarioSelect();
+  const entries = simulationEntriesForOffice(), agg = aggregateSimulation(entries);
+  const sum = type => entries.filter(e => !type || e.type === type).reduce((a,e)=>a+e.quantity,0);
+  $("#simMetricTotal").textContent = fmt.format(sum()); $("#simMetricNominal").textContent = fmt.format(sum("candidate")); $("#simMetricLegend").textContent = fmt.format(sum("legend"));
+  $("#simMetricMunicipalities").textContent = fmt.format(agg.municipalities.length); $("#simMetricCandidates").textContent = fmt.format(agg.candidates.length); $("#simMetricParties").textContent = fmt.format(agg.parties.length);
+  $("#simByMunicipality").innerHTML = agg.municipalities.length ? agg.municipalities.map(x=>`<tr><td>${esc(x.municipality)}</td><td>${fmt.format(x.total)}</td><td>${fmt.format(x.candidates.size)}</td><td>${fmt.format(x.parties.size)}</td></tr>`).join("") : simEmptyRow(4);
+  $("#simByCandidate").innerHTML = agg.candidates.length ? agg.candidates.map(x=>`<tr><td><b>${esc(x.name)}</b>${x.number?` <span class="sim-sub">${esc(x.number)}</span>`:""}</td><td>${esc(x.party||"—")}</td><td>${fmt.format(x.total)}</td><td>${fmt.format(x.municipalities.size)}</td></tr>`).join("") : simEmptyRow(4);
+  $("#simByParty").innerHTML = agg.parties.length ? agg.parties.map(x=>`<tr><td><b>${esc(x.party)}</b>${x.name?` <span class="sim-sub">${esc(x.name)}</span>`:""}</td><td>${fmt.format(x.nominal)}</td><td>${fmt.format(x.legend)}</td><td>${fmt.format(x.nominal+x.legend)}</td></tr>`).join("") : simEmptyRow(4);
+  $("#simByZone").innerHTML = agg.zones.length ? agg.zones.map(x=>`<tr><td>${esc(x.municipality)}</td><td>${esc(x.zone)}</td><td>${fmt.format(x.total)}</td><td>${fmt.format(x.sections.size)}</td></tr>`).join("") : simEmptyRow(4,"Nenhum lançamento com zona informada.");
+  const q = normalize(state.simulationRecordSearch); const visible = entries.filter(e => !q || normalize(`${e.municipality} ${e.zone} ${e.section} ${e.candidateName} ${e.candidateNumber} ${e.party} ${e.note}`).includes(q)).slice().sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  $("#simLaunchesBody").innerHTML = visible.length ? visible.map(e => {
+    const typeLabel = e.type === "candidate" ? "Nominal" : e.type === "legend" ? "Legenda" : e.type === "blank" ? "Branco" : "Nulo";
+    const target = e.type === "candidate" ? `${e.candidateName}${e.candidateNumber ? ` (${e.candidateNumber})` : ""}` : e.type === "legend" ? e.party : typeLabel;
+    return `<tr><td>${esc(formatDate(e.at))}</td><td>${esc(e.municipality)}</td><td>${esc(e.zone||"—")}</td><td>${esc(e.section||"—")}</td><td>${esc(typeLabel)}</td><td title="${esc(e.note||"")}">${esc(target)}</td><td>${esc(e.party||"—")}</td><td><b>${fmt.format(e.quantity)}</b></td><td><button class="sim-delete" type="button" data-sim-delete="${esc(e.id)}" aria-label="Excluir lançamento">×</button></td></tr>`;
+  }).join("") : simEmptyRow(9);
+  $$('[data-sim-delete]').forEach(btn => btn.onclick = () => { const scenario = activeScenario(); scenario.entries = scenario.entries.filter(e => e.id !== btn.dataset.simDelete); scenario.updatedAt = new Date().toISOString(); saveSimulationStore(); renderSimulation(); });
+}
+function exportSimulationCsv() {
+  const scenario = activeScenario(); const entries = scenario?.entries || [];
+  exportCsv(`simulacao-${slugify(scenario?.name || "cenario")}.csv`, ["Data/hora","Cargo","Município","Zona","Seção","Tipo","Candidatura","Número","Partido","Quantidade","Observação"], entries.map(e => [e.at,e.officeLabel||officeLabel(e.office),e.municipality,e.zone,e.section,e.type,e.candidateName,e.candidateNumber,e.party,e.quantity,e.note]));
+}
+function exportSimulationJson() {
+  const scenario = activeScenario(); downloadFile(`simulacao-${slugify(scenario?.name || "cenario")}.json`, JSON.stringify({ app:"Cívica MA", kind:"simulation", exportedAt:new Date().toISOString(), scenario }, null, 2), "application/json;charset=utf-8");
+}
+function importSimulationJson(file) {
+  const reader = new FileReader(); reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result); const scenario = data?.scenario || data;
+      if (!scenario || !Array.isArray(scenario.entries)) throw new Error("Arquivo inválido");
+      const imported = { id:newId("cenario"), name:`${String(scenario.name||"Cenário importado").slice(0,50)} (importado)`, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(), entries: scenario.entries.filter(e=>e && Number.isFinite(Number(e.quantity)) && Number(e.quantity)>0).map(e=>({...e,id:newId("lanc"),quantity:Math.floor(Number(e.quantity))})) };
+      const store=loadSimulationStore(); store.scenarios.push(imported); store.activeId=imported.id; saveSimulationStore(); renderScenarioSelect(); renderSimulation(); toast("Cenário importado.");
+    } catch { toast("Não foi possível importar este arquivo."); }
+  }; reader.readAsText(file);
+}
+
 function downloadFile(filename, content, type) {
   const blob = new Blob([content], { type }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -501,6 +696,22 @@ function bindEvents() {
   $("#exportCandidatesXls").onclick = () => { const list = filteredCandidates(); exportXls(`candidaturas-${state.office}-ma-2026.xls`, ["Nome de urna","Nome completo","Número","Partido","Situação"], list.map(c => [c.name,c.fullName,c.number,c.party,c.status])); };
   $("#exportSectionsCsv").onclick = () => { const data = state.sectionData.get(state.municipality); if (!data) return; const list = filteredSections(data); exportCsv(`secoes-${slugify(state.municipality)}-2026.csv`, ["Município","Zona","Seção","Eleitores"], list.map(s => [s.municipio,s.zona,s.secao,s.eleitores])); };
   $("#exportSectionsXls").onclick = () => { const data = state.sectionData.get(state.municipality); if (!data) return; const list = filteredSections(data); exportXls(`secoes-${slugify(state.municipality)}-2026.xls`, ["Município","Zona","Seção","Eleitores"], list.map(s => [s.municipio,s.zona,s.secao,s.eleitores])); };
+  $("#simScenario").onchange = e => { const store=loadSimulationStore(); store.activeId=e.target.value; saveSimulationStore(); renderSimulation(); };
+  $("#simNewScenario").onclick = () => { const name=prompt("Nome do novo cenário:",`Cenário ${loadSimulationStore().scenarios.length+1}`); if(name) createScenario(name); };
+  $("#simRenameScenario").onclick = () => { const scenario=activeScenario(); const name=prompt("Novo nome do cenário:",scenario.name); if(name?.trim()){scenario.name=name.trim().slice(0,60);scenario.updatedAt=new Date().toISOString();saveSimulationStore();renderScenarioSelect();} };
+  $("#simDuplicateScenario").onclick = () => { const source=activeScenario(),store=loadSimulationStore(),copy={...source,id:newId("cenario"),name:`${source.name} — cópia`,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),entries:source.entries.map(e=>({...e,id:newId("lanc")}))};store.scenarios.push(copy);store.activeId=copy.id;saveSimulationStore();renderScenarioSelect();renderSimulation(); };
+  $("#simDeleteScenario").onclick = () => { const store=loadSimulationStore(); if(store.scenarios.length<=1)return toast("Mantenha pelo menos um cenário."); const scenario=activeScenario(); if(confirm(`Excluir o cenário “${scenario.name}”?`)){store.scenarios=store.scenarios.filter(s=>s.id!==scenario.id);store.activeId=store.scenarios[0].id;saveSimulationStore();renderScenarioSelect();renderSimulation();} };
+  $("#simOffice").onchange = async e => { state.office=e.target.value; await populateSimulationCandidates(); updateSimulationVoteMode(); renderSimulation(); };
+  $("#simMunicipality").onchange = async e => { state.municipality=e.target.value; await populateSimulationZones(); populateSimulationSections(); };
+  $("#simZone").onchange = populateSimulationSections;
+  $("#simVoteType").onchange = updateSimulationVoteMode;
+  $("#simAdd").onclick = addSimulationEntry;
+  $("#simRecordSearch").oninput = e => { state.simulationRecordSearch=e.target.value; renderSimulation(); };
+  $("#simResetScenario").onclick = () => { const scenario=activeScenario(); if(confirm(`Apagar todos os lançamentos de “${scenario.name}”?`)){scenario.entries=[];scenario.updatedAt=new Date().toISOString();saveSimulationStore();renderSimulation();} };
+  $("#simExportCsv").onclick = exportSimulationCsv;
+  $("#simExportJson").onclick = exportSimulationJson;
+  $("#simImportButton").onclick = () => $("#simImportFile").click();
+  $("#simImportFile").onchange = e => { const file=e.target.files?.[0]; if(file) importSimulationJson(file); e.target.value=""; };
   $("#globalSearch").oninput = e => { clearTimeout(state.globalSearchTimer); state.globalSearchTimer = setTimeout(() => globalSearch(e.target.value), 320); };
   $("#globalSearch").onfocus = e => { if (e.target.value.trim().length >= 2) globalSearch(e.target.value); };
 }
@@ -511,7 +722,7 @@ function startClock() {
 }
 
 async function init() {
-  fillOfficeSelects(); fillMunicipalitySelect(); bindEvents(); startClock();
+  loadSimulationStore(); fillOfficeSelects(); fillMunicipalitySelect(); bindEvents(); startClock();
   checkSources(); route();
 }
 
