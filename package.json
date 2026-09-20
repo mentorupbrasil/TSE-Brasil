@@ -1,12 +1,11 @@
 {
   "name": "civica-ma-eleicoes-2026",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "Painel independente de consulta a dados públicos eleitorais do Maranhão nas Eleições 2026.",
+  "description": "Portal independente de consulta a dados públicos eleitorais do Maranhão nas Eleições 2026.",
   "scripts": {
-    "dev": "node server.mjs",
-    "check": "node --check server.mjs && node --check assets/app.js && node --check data/municipalities.js && node --check data/election.js && node --check api/candidatos.js && node --check api/secoes.js && node --check api/status.js && node --check lib/tse.js"
+    "check": "node --check assets/app.js && node --check data/municipalities.js && node --check data/election.js && node --check api/candidatos.js && node --check api/secoes.js && node --check api/status.js && node --check api/resumo.js && node --check api/busca.js && node --check lib/tse.js"
   },
   "engines": {
     "node": ">=18"
