@@ -39,10 +39,24 @@ function officeLabel(id) { return offices[String(id)] || `Cargo ${id}`; }
 
 async function api(path, { refresh = false } = {}) {
   const url = refresh ? `${path}${path.includes("?") ? "&" : "?"}_=${Date.now()}` : path;
-  const response = await fetch(url, { cache: refresh ? "no-store" : "default" });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.detail || data.error || `Falha HTTP ${response.status}`);
-  return data;
+  const cacheKey = `civica-api:${path}`;
+  try {
+    const response = await fetch(url, { cache: refresh ? "no-store" : "default" });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || data.detail || `Falha HTTP ${response.status}`);
+    try {
+      if (!path.startsWith("/api/status")) localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data }));
+    } catch {}
+    return data;
+  } catch (error) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+      if (cached?.data && Date.now() - cached.savedAt < 24 * 60 * 60 * 1000) {
+        return { ...cached.data, stale: true, cache: "browser-stale", fallbackError: "Fonte oficial temporariamente indisponível; exibindo a última consulta salva neste navegador." };
+      }
+    } catch {}
+    throw error;
+  }
 }
 
 function setPage(page) {

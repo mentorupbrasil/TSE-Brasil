@@ -15,3 +15,11 @@ As respostas externas são mantidas em memória por um período curto. Quando um
 
 ## Limitações
 Instâncias serverless podem ser recicladas, portanto o cache em memória não é persistente. A situação de candidaturas pode mudar conforme decisões da Justiça Eleitoral. Este projeto organiza dados públicos e não substitui a consulta à fonte oficial.
+
+## Fallback oficial
+Quando a consulta automática ao DivulgaCandContas ou à API CKAN retorna bloqueio HTTP, o backend tenta os arquivos oficiais publicados no CDN do TSE:
+- Candidaturas 2026: `consulta_cand_2026.zip`
+- Perfil do eleitorado por seção 2026 - MA: `perfil_eleitor_secao_2026_MA.zip`
+
+O fallback não usa fonte de terceiros; continua usando arquivos oficiais do TSE.
+

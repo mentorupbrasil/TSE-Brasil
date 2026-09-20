@@ -39,3 +39,7 @@ Não há `server.mjs` na raiz. O frontend é estático e as rotas em `api/` são
 ```bash
 npm run check
 ```
+
+## Resiliência das fontes
+A versão 3.1 possui fallback automático para os arquivos ZIP do CDN oficial do TSE quando os endpoints DivulgaCand/CKAN recusam chamadas server-side (por exemplo, HTTP 403 em provedores serverless). O navegador também mantém por até 24 horas a última resposta válida para contingência local, sempre sinalizada como dado em cache.
+
