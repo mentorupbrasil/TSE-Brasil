@@ -1,16 +1,1 @@
-{
-  "name": "civica-simulador-eleitoral",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "Simulador eleitoral fictício para demonstração visual.",
-  "scripts": {
-    "start": "node server.mjs",
-    "dev": "node server.mjs",
-    "check": "node --check assets/app.js && node --check data/municipalities.js && node --check data/election.js"
-  },
-  "engines": {
-    "node": ">=18"
-  }
-}
-
+{"name":"civica-ma-eleicoes-2026","version":"2.0.0","private":true,"type":"module","description":"Painel independente de consulta a dados públicos eleitorais do Maranhão nas Eleições 2026.","scripts":{"start":"node server.mjs","dev":"node server.mjs","check":"node --check server.mjs && node --check assets/app.js && node --check data/municipalities.js && node --check data/election.js"},"engines":{"node":">=18"}}

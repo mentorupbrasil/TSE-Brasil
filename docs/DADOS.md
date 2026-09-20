@@ -1,30 +1,12 @@
-# Dados incluídos
+# Dados e fontes
 
-## Referência territorial
+O sistema usa fontes públicas oficiais, sem candidaturas ou seções inventadas.
 
-O arquivo `data/municipalities.js` contém os 217 municípios do Maranhão e
-seus códigos territoriais. Essa lista é usada somente nos filtros e na
-navegação.
+## Candidaturas
+Fonte principal: DivulgaCandContas / TSE, Eleições Gerais 2026. O backend consulta a API pública e mantém cache curto para reduzir requisições repetidas.
 
-## Dados fictícios
+## Zonas e seções
+Fonte: Portal de Dados Abertos do TSE, conjunto Eleitorado 2026, recurso “MA - Perfil do eleitorado por seção eleitoral - 2026”. O backend localiza o recurso no catálogo CKAN, lê o CSV compactado e consolida linhas de perfil em uma linha por município/zona/seção.
 
-O arquivo `data/election.js` reúne:
-
-- cinco cargos simulados;
-- quatro partidos fictícios;
-- vinte candidaturas fictícias;
-- números e totais iniciais inventados;
-- doze urnas/seções fictícias para Imperatriz;
-- estados de processamento usados na animação.
-
-## Processamento
-
-O arquivo `assets/app.js` executa tudo localmente no navegador. Os números
-animados não são enviados a nenhum servidor. Ao atualizar a página, o cenário
-volta ao estado inicial.
-
-## Aviso
-
-Este repositório não possui integração com TSE, TRE, urnas eletrônicas, bases
-eleitorais, APIs externas ou sistemas governamentais.
-
+## Nota
+Situações de candidatura e arquivos do cadastro eleitoral podem ser atualizados pelo TSE. O painel exibe a informação retornada pela fonte no momento da consulta.
