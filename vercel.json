@@ -2,23 +2,71 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "rewrites": [
-    { "source": "/candidatos", "destination": "/index.html" },
-    { "source": "/candidatos/:path*", "destination": "/index.html" },
-    { "source": "/zonas", "destination": "/index.html" },
-    { "source": "/municipios", "destination": "/index.html" },
-    { "source": "/municipios/:path*", "destination": "/index.html" },
-    { "source": "/partidos", "destination": "/index.html" },
-    { "source": "/partidos/:path*", "destination": "/index.html" },
-    { "source": "/simulacao", "destination": "/index.html" },
-    { "source": "/fontes", "destination": "/index.html" }
+    {
+      "source": "/candidatos",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/candidatos/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/zonas",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/municipios",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/municipios/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/partidos",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/partidos/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/fontes",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bairros",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/base",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/lancamentos",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/simulacao",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
       ]
     }
   ]

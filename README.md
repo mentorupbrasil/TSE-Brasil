@@ -1,52 +1,39 @@
-# Cívica MA — Eleições 2026 (v3)
+# Cívica MA — Eleições 2026
 
 Portal independente para consulta organizada de dados públicos eleitorais do Maranhão.
 
-## O que há nesta versão
+## V5 — principais módulos
 
-- dashboard estadual com métricas e distribuições descritivas;
-- catálogo de candidaturas por cargo, partido, situação, busca e ordenação;
-- página detalhada de candidatura;
-- área de partidos e respectivas candidaturas por cargo;
-- 217 municípios com ficha individual;
-- zonas e seções por município, com resumo por zona;
-- paginação para listas grandes;
-- exportação CSV e Excel;
-- impressão / geração de PDF pelo navegador;
-- pesquisa global de municípios e candidaturas;
-- status das fontes públicas;
-- indicação separada de horário da consulta e atualização da fonte, quando disponível;
-- cache com contingência em memória para a última resposta bem-sucedida;
-- rotas amigáveis no Vercel;
-- layout responsivo, navegação móvel e melhorias de acessibilidade.
+- Candidaturas por cargo, partido e situação, com busca e exportação.
+- Partidos e fichas de candidatura.
+- Municípios do Maranhão.
+- Zonas, seções, bairros e locais de votação por município.
+- Painel de **Lançamentos** manuais, com um registro por vez e resumos territoriais.
+- **Base de pessoas privada**, armazenada criptografada no navegador e separada dos lançamentos.
+- Status das fontes com contingência e mensagens amigáveis.
 
-## Fontes
+## Fontes públicas
 
-- Candidaturas: TSE / DivulgaCandContas.
-- Eleitorado, zonas e seções: Portal de Dados Abertos do TSE, recurso do Maranhão em “Perfil do eleitorado por seção eleitoral — 2026”.
-- Municípios: lista dos 217 municípios do Maranhão e códigos IBGE usada apenas para navegação/localização.
+- TSE / DivulgaCandContas e Dados Abertos — Candidatos 2026.
+- TSE / Dados Abertos — Eleitorado por local de votação 2026.
 
-O portal não é sistema oficial do TSE/TRE-MA e não apresenta projeções ou recomendações eleitorais.
+O bairro apresentado no módulo territorial é o bairro do **local de votação** publicado no arquivo oficial; não é inferido como bairro de residência do eleitor.
+
+## Privacidade
+
+O repositório público não deve conter planilhas, CSVs, CPFs, datas de nascimento, contatos ou outros dados pessoais. A Base de pessoas usa criptografia AES-GCM no navegador e exige senha local. Não existe campo de candidatura, partido, voto ou preferência política dentro do cadastro nominal.
+
+Para importar cadastros, use um CSV privado com as colunas:
+
+`Nome;CPF;Nascimento;Bairro;Municipio;Zona;Secao;Lideranca;Telefone;WhatsApp;Email;Observacao`
+
+Não envie esse CSV para o GitHub.
 
 ## Vercel
 
-O projeto deve usar **Framework Preset: Other**. O próprio `vercel.json` também define `"framework": null` para evitar autodetecção como servidor Node.
-
-Não há `server.mjs` na raiz. O frontend é estático e as rotas em `api/` são Vercel Functions.
-
-## Validação
+Use **Framework Preset: Other**. O `vercel.json` já contém os rewrites do frontend. As funções em `/api` são serverless.
 
 ```bash
+npm install
 npm run check
 ```
-
-## Resiliência das fontes
-A versão 3.1 possui fallback automático para os arquivos ZIP do CDN oficial do TSE quando os endpoints DivulgaCand/CKAN recusam chamadas server-side (por exemplo, HTTP 403 em provedores serverless). O navegador também mantém por até 24 horas a última resposta válida para contingência local, sempre sinalizada como dado em cache.
-
-
-
-## Módulo de simulação manual
-
-A versão 4.0 inclui um ambiente local de simulação de lançamentos. Os dados são inseridos manualmente e armazenados no navegador do usuário (localStorage). Eles não são resultados oficiais, não são enviados ao TSE e não constituem previsão eleitoral.
-
-O módulo permite criar múltiplos cenários, lançar quantidades por cargo, município, zona, seção, candidatura e partido; registrar votos nominais, votos de legenda nos cargos proporcionais, brancos e nulos; visualizar agregações descritivas em ordem alfabética; exportar CSV/JSON; importar backups; duplicar e limpar cenários.

@@ -38,13 +38,15 @@
       <a class="nav-link" href="/candidatos" data-route="/candidatos" data-nav="candidates"><span>◉</span>Candidaturas</a>
       <a class="nav-link" href="/partidos" data-route="/partidos" data-nav="parties"><span>◆</span>Partidos</a>
       <a class="nav-link" href="/zonas" data-route="/zonas" data-nav="sections"><span>⌖</span>Zonas e seções</a>
+      <a class="nav-link" href="/bairros" data-route="/bairros" data-nav="neighborhoods"><span>▥</span>Bairros e locais</a>
       <a class="nav-link" href="/municipios" data-route="/municipios" data-nav="municipalities"><span>▤</span>Municípios</a>
-      <a class="nav-link" href="/simulacao" data-route="/simulacao" data-nav="simulation"><span>＋</span>Simulação de votos</a>
+      <a class="nav-link" href="/base" data-route="/base" data-nav="people"><span>♙</span>Base de pessoas</a>
+      <a class="nav-link" href="/lancamentos" data-route="/lancamentos" data-nav="launches"><span>＋</span>Lançamentos</a>
       <a class="nav-link" href="/fontes" data-route="/fontes" data-nav="sources"><span>ⓘ</span>Fontes e metodologia</a>
     </nav>
     <div class="sidebar-meta">
       <div><b>Portal independente</b><span>Organiza dados públicos da Justiça Eleitoral. Não é site oficial do TSE ou TRE-MA.</span></div>
-      <div class="sidebar-version">v4.0</div>
+      <div class="sidebar-version">v5.0</div>
     </div>
   </aside>
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -123,23 +125,41 @@
 
     <section class="page" id="page-sections" data-page="sections">
       <div class="page-head">
-        <div><span class="eyebrow">ELEITORADO 2026 • MA</span><h1>Zonas e seções eleitorais</h1><p>Estrutura consolidada a partir do perfil do eleitorado por seção publicado pelo TSE.</p></div>
+        <div><span class="eyebrow">ELEITORADO 2026 • MA</span><h1>Zonas e seções eleitorais</h1><p>Consulta por município a partir do arquivo oficial de locais de votação publicado pelo TSE.</p></div>
         <div class="toolbar"><button class="btn ghost" id="exportSectionsCsv">CSV</button><button class="btn ghost" id="exportSectionsXls">Excel</button></div>
       </div>
       <div class="filter-panel">
         <label class="grow">Município<select id="sectionMunicipality"></select></label>
         <label>Zona<select id="sectionZone"><option value="">Todas</option></select></label>
-        <label>Buscar seção<input id="sectionSearch" inputmode="numeric" placeholder="Ex.: 125"></label>
+        <label class="grow">Buscar<input id="sectionSearch" placeholder="Seção, bairro ou local de votação"></label>
       </div>
-      <div class="metrics compact">
+      <div class="metrics five">
         <article><span>Seções</span><strong id="sectionsCount">—</strong></article>
         <article><span>Zonas</span><strong id="zonesCount">—</strong></article>
+        <article><span>Bairros</span><strong id="neighborhoodsCount">—</strong></article>
+        <article><span>Locais</span><strong id="locationsCount">—</strong></article>
         <article><span>Eleitores agregados</span><strong id="electorsCount">—</strong></article>
       </div>
       <div class="data-meta" id="sectionsMeta"></div>
       <div id="zoneCards" class="zone-cards"></div>
-      <section class="panel"><div class="table-wrap"><table><thead><tr><th>Município</th><th>Zona</th><th>Seção</th><th>Eleitores</th></tr></thead><tbody id="sectionsBody"></tbody></table></div></section>
+      <section class="panel"><div class="table-wrap"><table><thead><tr><th>Município</th><th>Bairro do local</th><th>Zona</th><th>Seção</th><th>Local de votação</th><th>Eleitores</th><th>Acessibilidade</th></tr></thead><tbody id="sectionsBody"></tbody></table></div></section>
       <div class="pagination" id="sectionPagination"></div>
+    </section>
+
+    <section class="page" id="page-neighborhoods" data-page="neighborhoods">
+      <div class="page-head"><div><span class="eyebrow">LOCAIS DE VOTAÇÃO • 2026</span><h1>Bairros e locais por município</h1><p>O bairro exibido é o bairro do <b>local de votação</b> informado na base oficial, não necessariamente o bairro de residência do eleitor.</p></div></div>
+      <div class="filter-panel"><label class="grow">Município<select id="neighborhoodMunicipality"></select></label><label class="grow">Buscar bairro ou local<input id="neighborhoodSearch" placeholder="Ex.: Centro, escola, endereço"></label></div>
+      <div class="metrics four">
+        <article><span>Bairros</span><strong id="bairroMetric">—</strong></article>
+        <article><span>Locais de votação</span><strong id="localMetric">—</strong></article>
+        <article><span>Seções</span><strong id="bairroSectionMetric">—</strong></article>
+        <article><span>Eleitores agregados</span><strong id="bairroElectorMetric">—</strong></article>
+      </div>
+      <div class="data-meta" id="neighborhoodMeta"></div>
+      <div class="split-grid">
+        <section class="panel"><div class="panel-head"><div><h2>Bairros</h2><p>Resumo por bairro do local de votação.</p></div></div><div class="table-wrap tall"><table><thead><tr><th>Bairro</th><th>Zonas</th><th>Locais</th><th>Seções</th><th>Eleitores</th></tr></thead><tbody id="neighborhoodBody"></tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2>Locais de votação</h2><p>Nome, endereço, zona e seções vinculadas.</p></div></div><div class="table-wrap tall"><table><thead><tr><th>Bairro</th><th>Zona</th><th>Local</th><th>Endereço</th><th>CEP</th><th>Seções</th><th>Eleitores</th></tr></thead><tbody id="locationsBody"></tbody></table></div></section>
+      </div>
     </section>
 
     <section class="page" id="page-municipalities" data-page="municipalities">
@@ -152,57 +172,102 @@
     </section>
 
 
-    <section class="page" id="page-simulation" data-page="simulation">
+    <section class="page" id="page-people" data-page="people">
       <div class="page-head">
-        <div><span class="eyebrow">AMBIENTE DE SIMULAÇÃO MANUAL</span><h1>Simulação de lançamentos de votos</h1><p>Registre cenários hipotéticos por cargo, município, zona, seção, candidatura e partido. Os lançamentos desta área são locais, manuais e não representam resultado oficial, previsão ou apuração.</p></div>
+        <div><span class="eyebrow">BASE PRIVADA • NESTE NAVEGADOR</span><h1>Base de pessoas</h1><p>Cadastre e organize dados pessoais sem colocá-los no repositório público. A base fica criptografada no navegador com a senha definida por você.</p></div>
+        <div class="toolbar"><button class="btn ghost" id="peopleExportCsv" disabled>Exportar CSV</button><button class="btn ghost" id="peopleBackup" disabled>Backup criptografado</button></div>
+      </div>
+      <div class="privacy-warning"><strong>PRIVADO</strong><span>CPF, nascimento e contatos não são enviados ao TSE nem incluídos no código do site. Esta base não possui campo de candidato, partido, voto ou preferência política.</span></div>
+      <section class="panel vault-panel" id="vaultLocked">
+        <div class="panel-head"><div><h2>Desbloquear cofre local</h2><p id="vaultHint">Defina uma senha para criar a base privada ou use a senha existente.</p></div></div>
+        <div class="vault-form"><label>Senha<input id="vaultPassword" type="password" minlength="8" autocomplete="current-password" placeholder="Mínimo de 8 caracteres"></label><button class="btn primary" id="vaultUnlock">Criar / desbloquear</button><label class="btn ghost file-label">Restaurar backup<input type="file" id="peopleRestoreFile" accept="application/json,.json" hidden></label></div>
+        <div class="form-help">A senha não é enviada ao servidor e não há recuperação de senha. Guarde também um backup criptografado.</div>
+      </section>
+      <div id="peopleWorkspace" hidden>
+        <div class="metrics four">
+          <article><span>Pessoas</span><strong id="peopleCount">0</strong><small>cadastros locais</small></article>
+          <article><span>Com CPF</span><strong id="peopleCpfCount">0</strong></article>
+          <article><span>Com zona/seção</span><strong id="peopleZoneCount">0</strong></article>
+          <article><span>Com bairro</span><strong id="peopleNeighborhoodCount">0</strong></article>
+        </div>
+        <section class="panel people-form-panel">
+          <div class="panel-head"><div><h2 id="personFormTitle">Nova pessoa</h2><p>Cadastro individual. Os campos podem ser completados aos poucos.</p></div><div class="toolbar"><label class="btn ghost file-label">Importar CSV privado<input id="peopleImportCsv" type="file" accept="text/csv,.csv" hidden></label><button class="btn ghost" id="vaultLock">Bloquear</button></div></div>
+          <div class="person-form">
+            <label class="span-2">Nome<input id="personName" maxlength="120" autocomplete="name"></label>
+            <label>CPF<input id="personCpf" maxlength="14" inputmode="numeric" placeholder="000.000.000-00"></label>
+            <label>Nascimento<input id="personBirth" type="date"></label>
+            <label>Bairro<input id="personNeighborhood" maxlength="100"></label>
+            <label>Município<input id="personMunicipality" maxlength="100" list="municipalityNames"></label>
+            <label>Zona<input id="personZone" maxlength="8" inputmode="numeric"></label>
+            <label>Seção<input id="personSection" maxlength="8" inputmode="numeric"></label>
+            <label>Liderança<input id="personLeader" maxlength="120"></label>
+            <label>Telefone<input id="personPhone" maxlength="24" inputmode="tel"></label>
+            <label>WhatsApp<input id="personWhatsapp" maxlength="24" inputmode="tel"></label>
+            <label>E-mail<input id="personEmail" maxlength="160" type="email"></label>
+            <label class="span-2">Observação<input id="personNote" maxlength="240"></label>
+            <div class="form-actions span-2"><button class="btn primary" id="personSave">Salvar pessoa</button><button class="btn ghost" id="personCancel" hidden>Cancelar edição</button></div>
+          </div>
+          <datalist id="municipalityNames"></datalist>
+        </section>
+        <section class="panel people-list-panel">
+          <div class="panel-head"><div><h2>Cadastros</h2><p>CPF é mascarado na listagem.</p></div><div class="toolbar"><input id="peopleSearch" placeholder="Buscar nome, bairro, município, zona, seção ou liderança"></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Nome</th><th>CPF</th><th>Nascimento</th><th>Bairro</th><th>Município</th><th>Zona</th><th>Seção</th><th>Liderança</th><th>Contato</th><th></th></tr></thead><tbody id="peopleBody"></tbody></table></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="page" id="page-launches" data-page="launches">
+      <div class="page-head">
+        <div><span class="eyebrow">CONTROLE MANUAL</span><h1>Lançamentos</h1><p>Registre um lançamento por vez, por cargo, município, bairro do local de votação, zona, seção, candidatura ou partido. Esta área é separada da Base de pessoas.</p></div>
         <div class="toolbar"><button class="btn ghost" id="simExportCsv">CSV</button><button class="btn ghost" id="simExportJson">Backup JSON</button><button class="btn ghost" id="simImportButton">Importar JSON</button><input type="file" id="simImportFile" accept="application/json,.json" hidden></div>
       </div>
-      <div class="simulation-warning"><strong>SIMULAÇÃO</strong><span>Dados inseridos por você. Não são votos reais, não vêm do TSE e não devem ser interpretados como projeção de resultado.</span></div>
+      <div class="launch-warning"><strong>LANÇAMENTOS MANUAIS</strong><span>Não são apuração oficial, resultado do TSE ou previsão eleitoral. Cada clique em “Registrar 1 lançamento” adiciona exatamente uma unidade.</span></div>
 
       <div class="scenario-bar">
-        <label>Cenário<select id="simScenario"></select></label>
-        <button class="btn secondary" id="simNewScenario">Novo cenário</button>
+        <label>Controle<select id="simScenario"></select></label>
+        <button class="btn secondary" id="simNewScenario">Novo controle</button>
         <button class="btn ghost" id="simRenameScenario">Renomear</button>
         <button class="btn ghost" id="simDuplicateScenario">Duplicar</button>
-        <button class="btn danger-ghost" id="simDeleteScenario">Excluir cenário</button>
+        <button class="btn danger-ghost" id="simDeleteScenario">Excluir controle</button>
       </div>
 
       <section class="panel simulation-entry-panel">
-        <div class="panel-head"><div><h2>Novo lançamento</h2><p>Escolha onde e para quem o voto simulado será contabilizado.</p></div></div>
+        <div class="panel-head"><div><h2>Novo lançamento</h2><p>Um registro por vez. Município, bairro, zona e seção podem ser informados para detalhamento territorial.</p></div></div>
         <div class="simulation-form">
           <label>Cargo<select id="simOffice"></select></label>
           <label>Município<select id="simMunicipality"></select></label>
+          <label>Bairro do local<select id="simNeighborhood"><option value="">Não especificado</option></select></label>
           <label>Zona<select id="simZone"><option value="">Não especificada</option></select></label>
           <label>Seção<select id="simSection"><option value="">Não especificada</option></select></label>
           <label>Tipo de lançamento<select id="simVoteType"></select></label>
           <label class="span-2" id="simCandidateWrap">Candidatura<select id="simCandidate"></select></label>
           <label class="span-2" id="simPartyWrap">Partido<select id="simParty"></select></label>
-          <label>Quantidade<input id="simQuantity" type="number" min="1" max="10000000" step="1" value="1" inputmode="numeric"></label>
-          <label class="span-2">Observação opcional<input id="simNote" maxlength="120" placeholder="Ex.: lote de teste, urna simulada, planilha A"></label>
-          <div class="simulation-submit"><button class="btn primary" id="simAdd">Adicionar lançamento</button></div>
+          <label class="span-2">Observação opcional<input id="simNote" maxlength="120" placeholder="Ex.: conferência, lote A, anotação interna"></label>
+          <div class="simulation-submit"><button class="btn primary" id="simAdd">Registrar 1 lançamento</button></div>
         </div>
         <div class="form-help" id="simVoteHelp"></div>
       </section>
 
       <div class="metrics six simulation-metrics">
-        <article><span>Total simulado</span><strong id="simMetricTotal">0</strong><small>lançamentos do cargo</small></article>
+        <article><span>Total de lançamentos</span><strong id="simMetricTotal">0</strong><small>do cargo selecionado</small></article>
         <article><span>Nominais</span><strong id="simMetricNominal">0</strong><small>em candidaturas</small></article>
-        <article><span>Legenda</span><strong id="simMetricLegend">0</strong><small>apenas proporcionais</small></article>
-        <article><span>Municípios</span><strong id="simMetricMunicipalities">0</strong><small>com lançamento</small></article>
-        <article><span>Candidaturas</span><strong id="simMetricCandidates">0</strong><small>com lançamento</small></article>
-        <article><span>Partidos</span><strong id="simMetricParties">0</strong><small>com lançamento</small></article>
+        <article><span>Legenda</span><strong id="simMetricLegend">0</strong><small>quando aplicável</small></article>
+        <article><span>Municípios</span><strong id="simMetricMunicipalities">0</strong><small>com registro</small></article>
+        <article><span>Candidaturas</span><strong id="simMetricCandidates">0</strong><small>com registro</small></article>
+        <article><span>Partidos</span><strong id="simMetricParties">0</strong><small>com registro</small></article>
       </div>
 
       <div class="simulation-summary-grid">
-        <section class="panel"><div class="panel-head"><div><h2>Por município</h2><p>Ordem alfabética; sem classificação de desempenho.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Município</th><th>Votos simulados</th><th>Candidaturas</th><th>Partidos</th></tr></thead><tbody id="simByMunicipality"></tbody></table></div></section>
-        <section class="panel"><div class="panel-head"><div><h2>Por candidatura</h2><p>Somente lançamentos nominais; ordem alfabética.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Candidatura</th><th>Partido</th><th>Votos simulados</th><th>Municípios</th></tr></thead><tbody id="simByCandidate"></tbody></table></div></section>
-        <section class="panel"><div class="panel-head"><div><h2>Por partido</h2><p>Nominais + legenda quando aplicável; ordem alfabética.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Partido</th><th>Nominais</th><th>Legenda</th><th>Total simulado</th></tr></thead><tbody id="simByParty"></tbody></table></div></section>
-        <section class="panel"><div class="panel-head"><div><h2>Por zona</h2><p>Somente lançamentos com zona informada.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Município</th><th>Zona</th><th>Votos simulados</th><th>Seções</th></tr></thead><tbody id="simByZone"></tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2>Por município</h2><p>Ordem alfabética.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Município</th><th>Lançamentos</th><th>Candidaturas</th><th>Partidos</th></tr></thead><tbody id="simByMunicipality"></tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2>Por bairro</h2><p>Bairro do local de votação informado no lançamento.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Município</th><th>Bairro</th><th>Lançamentos</th><th>Zonas</th></tr></thead><tbody id="simByNeighborhood"></tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2>Por candidatura</h2><p>Somente lançamentos nominais; ordem alfabética.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Candidatura</th><th>Partido</th><th>Lançamentos</th><th>Municípios</th></tr></thead><tbody id="simByCandidate"></tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2>Por partido</h2><p>Nominais + legenda quando aplicável; ordem alfabética.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Partido</th><th>Nominais</th><th>Legenda</th><th>Total</th></tr></thead><tbody id="simByParty"></tbody></table></div></section>
+        <section class="panel"><div class="panel-head"><div><h2>Por zona</h2><p>Somente registros com zona informada.</p></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Município</th><th>Zona</th><th>Lançamentos</th><th>Seções</th></tr></thead><tbody id="simByZone"></tbody></table></div></section>
       </div>
 
       <section class="panel simulation-records">
-        <div class="panel-head"><div><h2>Lançamentos do cenário</h2><p>Histórico editável do cargo selecionado.</p></div><div class="toolbar"><input id="simRecordSearch" placeholder="Filtrar lançamentos"><button class="btn danger-ghost" id="simResetScenario">Limpar cenário</button></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Data/hora</th><th>Município</th><th>Zona</th><th>Seção</th><th>Tipo</th><th>Destino</th><th>Partido</th><th>Qtd.</th><th></th></tr></thead><tbody id="simLaunchesBody"></tbody></table></div>
+        <div class="panel-head"><div><h2>Histórico</h2><p>Registros do controle e cargo selecionados.</p></div><div class="toolbar"><input id="simRecordSearch" placeholder="Filtrar lançamentos"><button class="btn danger-ghost" id="simResetScenario">Limpar controle</button></div></div>
+        <div class="table-wrap"><table><thead><tr><th>Data/hora</th><th>Município</th><th>Bairro</th><th>Zona</th><th>Seção</th><th>Tipo</th><th>Destino</th><th>Partido</th><th></th></tr></thead><tbody id="simLaunchesBody"></tbody></table></div>
       </section>
     </section>
 
@@ -211,11 +276,11 @@
       <div id="sourceHealthCards" class="source-health-grid"></div>
       <div class="source-cards">
         <article><span class="card-icon">◉</span><b>Candidaturas 2026</b><p>As candidaturas são consultadas por cargo no serviço público do DivulgaCandContas. O portal não altera situação de registro nem cria candidaturas.</p><a target="_blank" rel="noopener" href="https://dadosabertos.tse.jus.br/dataset/candidatos-2026">Conjunto oficial de candidatos ↗</a></article>
-        <article><span class="card-icon">⌖</span><b>Zonas e seções</b><p>Os registros são derivados do recurso do Maranhão no conjunto “Perfil do eleitorado por seção eleitoral — 2026”, agregando linhas por município, zona e seção.</p><a target="_blank" rel="noopener" href="https://dadosabertos.tse.jus.br/dataset/eleitorado-2026">Conjunto oficial de eleitorado ↗</a></article>
+        <article><span class="card-icon">⌖</span><b>Zonas e seções</b><p>Zonas, seções, bairros e locais são consultados no recurso oficial “Eleitorado por local de votação — 2026”. O bairro se refere ao local de votação.</p><a target="_blank" rel="noopener" href="https://dadosabertos.tse.jus.br/dataset/eleitorado-2026">Conjunto oficial de eleitorado ↗</a></article>
         <article><span class="card-icon">↻</span><b>Cache e contingência</b><p>O servidor mantém cache temporário. Se a fonte ficar indisponível e houver dado anterior em memória, o portal pode devolver a última consulta com indicação de contingência.</p></article>
         <article><span class="card-icon">ⓘ</span><b>Horários</b><p>“Consulta realizada em” é o horário em que o portal acessou a fonte. “Fonte atualizada em” é usado apenas quando o próprio conjunto oficial disponibiliza essa informação.</p></article>
         <article><span class="card-icon">≠</span><b>Independência</b><p>Este portal é independente e não é um produto oficial do Tribunal Superior Eleitoral ou do Tribunal Regional Eleitoral do Maranhão.</p></article>
-        <article><span class="card-icon">✓</span><b>Sem projeções</b><p>O portal apresenta dados descritivos publicados pelas fontes. Não produz previsão de resultado, chance eleitoral ou recomendação política.</p></article>
+        <article><span class="card-icon">✓</span><b>Separação de dados</b><p>Dados oficiais, lançamentos manuais e a base privada de pessoas são áreas distintas. Dados pessoais não são publicados pelo portal.</p></article>
       </div>
     </section>
   </main>

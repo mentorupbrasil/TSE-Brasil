@@ -1,28 +1,23 @@
 # Dados e metodologia
 
 ## Candidaturas
-O endpoint `/api/candidatos?cargo=` consulta o DivulgaCandContas para 2026. O escopo é Maranhão para cargos estaduais/federais e Brasil para Presidente. A resposta é normalizada para nome de urna, nome completo, número, partido, situação, foto e campos de federação/coligação quando retornados pela fonte.
 
-## Zonas e seções
-O endpoint `/api/secoes?municipio=` consulta o pacote de eleitorado 2026 no Portal de Dados Abertos do TSE, localiza o recurso do Maranhão e agrega as linhas do CSV por município + zona + seção, somando `QT_ELEITORES_PERFIL`.
+O portal consulta candidaturas por cargo no TSE. Quando a consulta principal não está disponível, o backend pode utilizar o arquivo oficial de Candidatos 2026 publicado no CDN do TSE.
 
-## Cache e contingência
-As respostas externas são mantidas em memória por um período curto. Quando uma atualização externa falha e existe uma resposta anterior na mesma instância serverless, a API pode retornar o último dado bem-sucedido com `stale: true`.
+## Zonas, seções, bairros e locais
 
-## Datas
-- `queriedAt`: quando a fonte foi consultada pelo portal.
-- `sourceUpdatedAt`: data de atualização fornecida pela própria fonte, quando disponível.
+O módulo territorial usa o recurso oficial **Eleitorado por local de votação — 2026**. O arquivo é processado em fluxo no servidor e somente registros do Maranhão são mantidos para a resposta.
 
-## Limitações
-Instâncias serverless podem ser recicladas, portanto o cache em memória não é persistente. A situação de candidaturas pode mudar conforme decisões da Justiça Eleitoral. Este projeto organiza dados públicos e não substitui a consulta à fonte oficial.
+Campos usados quando disponíveis: município, zona, seção, bairro do local, nome do local de votação, endereço, CEP, acessibilidade e eleitorado agregado.
 
-## Fallback oficial
-Quando a consulta automática ao DivulgaCandContas ou à API CKAN retorna bloqueio HTTP, o backend tenta os arquivos oficiais publicados no CDN do TSE:
-- Candidaturas 2026: `consulta_cand_2026.zip`
-- Perfil do eleitorado por seção 2026 - MA: `perfil_eleitor_secao_2026_MA.zip`
+“Bairro” significa bairro do local de votação. O portal não deduz o bairro de residência de uma pessoa a partir desse conjunto.
 
-O fallback não usa fonte de terceiros; continua usando arquivos oficiais do TSE.
+## Lançamentos manuais
 
+A área `/lancamentos` guarda registros criados manualmente no `localStorage` do navegador. Cada novo registro vale uma unidade. Esses dados não pertencem ao TSE, não são apuração oficial e não são apresentados como previsão eleitoral.
 
-## Dados de simulação
-Os dados criados na área `/simulacao` não pertencem às bases do TSE. São lançamentos manuais e hipotéticos armazenados localmente no navegador. O sistema não os apresenta como resultado oficial nem como previsão. Para cargos proporcionais (deputado federal e estadual), o módulo permite separar lançamentos nominais e de legenda; para os demais cargos, o tipo legenda não é oferecido.
+## Base de pessoas
+
+A área `/base` é separada dos lançamentos. Ela permite nome, CPF, nascimento, bairro, município, zona, seção, liderança e dados de contato. O conteúdo é criptografado localmente com Web Crypto (PBKDF2 + AES-GCM) antes de ser salvo no navegador.
+
+O cadastro nominal não possui campo de candidatura, partido, voto ou preferência política.

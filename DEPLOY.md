@@ -1,50 +1,28 @@
 # Deploy no Vercel
 
-## Configuração recomendada
+1. Extraia o ZIP na raiz do repositório `TSE-Brasil`.
+2. Confirme no Vercel: **Settings → Build and Deployment → Framework Preset → Other**.
+3. Faça commit e push no `main`.
+4. Aguarde o deploy de produção.
 
-No projeto `tse-brasil`:
+## Rotas
 
-- Framework Preset: **Other**
-- Root Directory: raiz do repositório
-- Build Command: deixar vazio / automático
-- Output Directory: deixar vazio / automático
-- Install Command: automático
-
-O arquivo `vercel.json` também define `"framework": null` para reforçar o preset `Other`.
-
-## Atualização pelo GitHub
-
-1. Substitua os arquivos do repositório pelos arquivos deste pacote.
-2. Confirme que `server.mjs` foi removido.
-3. Commit e push na branch `main`.
-4. Aguarde o deploy automático do Vercel.
-5. Se o Vercel reaproveitar configuração antiga, faça Redeploy sem cache.
-
-## Rotas esperadas
-
-- `/`
+- `/` — visão geral
 - `/candidatos`
-- `/candidatos/{cargo}/{id}`
 - `/partidos`
-- `/partidos/{cargo}/{sigla}`
 - `/zonas`
+- `/bairros`
 - `/municipios`
-- `/municipios/{municipio}`
+- `/base` — base privada no navegador
+- `/lancamentos` — lançamentos manuais
 - `/fontes`
 
-## APIs
+A rota antiga `/simulacao` é mantida apenas como compatibilidade e é convertida para `/lancamentos` no navegador.
 
-- `/api/candidatos?cargo=6`
-- `/api/secoes?municipio=Imperatriz`
-- `/api/resumo`
-- `/api/status`
-- `/api/busca?q=nome`
+## Dados territoriais
 
-## Checagem local de sintaxe
+A leitura de zonas/seções/locais usa processamento em fluxo do ZIP oficial do TSE para reduzir consumo de memória na função serverless. A primeira consulta territorial pode demorar mais; as seguintes aproveitam cache.
 
-```bash
-npm run check
-```
+## Dados privados
 
-## Simulação de votos (v4)
-A rota `/simulacao` é uma página interna do frontend e já está incluída nos rewrites do `vercel.json`. Os cenários e lançamentos ficam somente no `localStorage` do navegador; use o botão **Backup JSON** para transportar ou preservar um cenário.
+Nunca coloque `Eleitores.xlsx`, CSV de pessoas, backup do cofre ou qualquer arquivo com CPF/nascimento no repositório público. Importe o CSV pela tela **Base de pessoas** depois do site carregado.
