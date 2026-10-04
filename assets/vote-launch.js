@@ -16,6 +16,8 @@ window.CivicaVoteLaunch = (() => {
   let running = false;
   let abort = false;
   let audioCtx = null;
+  const urnaBuffers = { confirma: null, pilili: null };
+  let urnaLoadPromise = null;
   const catalog = new Map();
   const selection = new Map();
 
@@ -46,31 +48,56 @@ window.CivicaVoteLaunch = (() => {
     return audioCtx;
   }
 
-  /** Dois bipes curtos estilo confirmação de urna eletrônica. */
-  function playUrnaBeep() {
+  async function loadUrnaSounds() {
+    if (urnaBuffers.confirma && urnaBuffers.pilili) return urnaBuffers;
+    if (urnaLoadPromise) return urnaLoadPromise;
+    urnaLoadPromise = (async () => {
+      const ctx = ensureAudio();
+      const files = [
+        ["confirma", "/assets/sounds/urna-confirma.wav"],
+        ["pilili", "/assets/sounds/urna-pilili.wav"]
+      ];
+      for (const [key, url] of files) {
+        const res = await fetch(url, { cache: "force-cache" });
+        if (!res.ok) throw new Error(`Áudio indisponível: ${url}`);
+        urnaBuffers[key] = await ctx.decodeAudioData(await res.arrayBuffer());
+      }
+      return urnaBuffers;
+    })();
+    return urnaLoadPromise;
+  }
+
+  function playUrnaSample(kind = "confirma") {
     const soundOn = document.getElementById("vlSound")?.checked !== false;
     if (!soundOn) return;
+    const buffer = urnaBuffers[kind];
+    if (!buffer) return;
     try {
       const ctx = ensureAudio();
-      const t0 = ctx.currentTime;
-      const playTone = (freq, start, dur) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "square";
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.12, start + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(start);
-        osc.stop(start + dur + 0.02);
-      };
-      playTone(880, t0, 0.09);
-      playTone(1175, t0 + 0.11, 0.11);
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.value = 3400;
+      filter.Q.value = 0.65;
+      const gain = ctx.createGain();
+      const vol = kind === "pilili" ? 0.92 : 0.88;
+      gain.gain.value = vol;
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(0);
     } catch {
       /* áudio indisponível */
     }
+  }
+
+  function playUrnaBeep() {
+    playUrnaSample("confirma");
+  }
+
+  function playUrnaPilili() {
+    playUrnaSample("pilili");
   }
 
   function fakeHash(seed) {
@@ -265,6 +292,11 @@ window.CivicaVoteLaunch = (() => {
         branch?.classList.add("done");
         await sleep(cycles > 10 ? 40 : 90);
       }
+      if (!abort) {
+        playUrnaPilili();
+        log("PILILI :: fim do ciclo de votação (réplica sonora UE)", "info");
+        await sleep(cycles > 10 ? 180 : 420);
+      }
     }
     if (abort) log("ABORT :: tramitação interrompida pelo operador", "warn");
     else log(`DONE :: ${registered} registros simulados concluídos (sem efeito real)`, "info");
@@ -292,9 +324,27 @@ window.CivicaVoteLaunch = (() => {
       });
       document.getElementById(`vlSearch${item.office}`)?.addEventListener("input", () => populateSelect(item.office));
     });
-    document.getElementById("vlStart")?.addEventListener("click", () => {
+    document.getElementById("vlStart")?.addEventListener("click", async () => {
       ensureAudio();
+      try {
+        await loadUrnaSounds();
+      } catch (e) {
+        deps.toast?.("Não foi possível carregar o áudio da urna.");
+        log(`ERR :: áudio — ${esc(e.message)}`, "warn");
+        return;
+      }
       runTramitation();
+    });
+    document.getElementById("vlTestSound")?.addEventListener("click", async () => {
+      ensureAudio();
+      try {
+        await loadUrnaSounds();
+        playUrnaBeep();
+        await sleep(220);
+        playUrnaPilili();
+      } catch (e) {
+        deps.toast?.("Áudio da urna indisponível.");
+      }
     });
     document.getElementById("vlStop")?.addEventListener("click", stopTramitation);
     document.getElementById("vlMass")?.addEventListener("input", e => {
@@ -337,7 +387,10 @@ window.CivicaVoteLaunch = (() => {
               <input type="range" id="vlMass" min="1" max="120" value="1">
               <output id="vlMassOut" for="vlMass">1</output>
             </div>
-            <label class="vl-sound-row"><input type="checkbox" id="vlSound" checked> Som da urna ao registrar</label>
+            <div class="vl-sound-block">
+              <label class="vl-sound-row"><input type="checkbox" id="vlSound" checked> Áudio de urna (confirmação + pilili)</label>
+              <button type="button" class="vl-btn vl-btn-small" id="vlTestSound">Testar sons</button>
+            </div>
             <div class="vl-actions">
               <button type="button" class="vl-btn" id="vlStart">Iniciar tramitação</button>
               <button type="button" class="vl-btn danger" id="vlStop" disabled>Parar</button>
@@ -386,6 +439,7 @@ window.CivicaVoteLaunch = (() => {
       await loadAllCatalogs();
       renderTree();
       log("READY :: catálogos TSE sincronizados.", "info");
+      loadUrnaSounds().then(() => log("AUDIO :: samples UE carregados.", "dim")).catch(() => log("WARN :: samples de áudio offline.", "warn"));
     } catch (e) {
       log(`ERR :: ${esc(e.message)}`, "warn");
       deps.toast?.(e.message || "Falha ao carregar candidatos.");

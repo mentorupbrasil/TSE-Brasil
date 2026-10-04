@@ -243,12 +243,23 @@
   font-weight: 700;
 }
 
+.page-vote-launch .vl-sound-block {
+  margin-top: 0.5rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
 .page-vote-launch .vl-sound-row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.5rem;
   font-size: 0.6875rem;
+}
+
+.page-vote-launch .vl-btn-small {
+  min-height: 2rem;
+  font-size: 0.625rem;
+  padding: 0 0.65rem;
 }
 
 .page-vote-launch .vl-tree-wrap {
