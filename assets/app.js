@@ -181,7 +181,7 @@ async function route() {
     if (routeInfo.page === "municipality-detail") await loadMunicipalityDetail(routeInfo.slug);
     if (routeInfo.page === "people") { setBreadcrumbs([{ label: "Base de pessoas" }]); renderPeoplePage(); }
     if (routeInfo.page === "vote-launch") {
-      setBreadcrumbs([]);
+      setBreadcrumbs([{ label: "Tramitação de votos" }]);
       if (window.CivicaVoteLaunch) {
         await CivicaVoteLaunch.mount({ getCandidates, esc, officeLabel, toast, wireImageFallbacks });
       }
