@@ -39,6 +39,32 @@ function formatDate(value) {
 }
 function formatMaybe(value) { return value === null || value === undefined ? "—" : fmt.format(value); }
 function officeLabel(id) { return offices[String(id)] || `Cargo ${id}`; }
+const moneyFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+function formatBirthDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString("pt-BR");
+}
+function divulgacandUrl(office, candidate) {
+  const scope = String(office) === "1" ? "BR" : "MA";
+  const id = candidate?.id || candidate?.number;
+  if (!id) return cfg.sources?.divulga || "https://divulgacandcontas.tse.jus.br/divulga/";
+  return `https://divulgacandcontas.tse.jus.br/divulga/#/candidato/2026/${scope}/20322002026/${office}/${encodeURIComponent(id)}`;
+}
+function displayValue(value) {
+  if (value === null || value === undefined) return "";
+  const text = String(value).trim();
+  return text && text !== "—" ? text : "";
+}
+function factItem(label, value) {
+  const text = displayValue(value);
+  if (!text) return "";
+  return `<div class="fact-item"><dt>${esc(label)}</dt><dd>${esc(text)}</dd></div>`;
+}
+function factSection(title, html) {
+  if (!html.trim()) return "";
+  return `<section class="detail-section"><h2>${esc(title)}</h2><dl class="detail-facts">${html}</dl></section>`;
+}
 
 async function api(path, { refresh = false } = {}) {
   const url = refresh ? `${path}${path.includes("?") ? "&" : "?"}_=${Date.now()}` : path;
@@ -176,19 +202,112 @@ function wireImageFallbacks(root = document) {
 
 function statusClass(status = "") {
   const n = normalize(status);
-  return /deferid|apto|habilitad|eleito/.test(n) ? "good" : "";
+  if (/indefer|impugn|cassad|cancel|inapto|sub judice|renunci/.test(n)) return "warn";
+  return /deferid|apto|habilitad|eleito|concorrendo/.test(n) ? "good" : "";
 }
 
 function candidateCard(candidate, office = state.office) {
   const path = `/candidatos/${encodeURIComponent(office)}/${encodeURIComponent(candidate.id || candidate.number)}`;
-  return `<a class="candidate-card" href="${path}" data-route="${path}">
-    ${photoMarkup(candidate)}
+  const reg = candidate.registrationStatus || candidate.status;
+  const ballot = candidate.ballotStatus && candidate.ballotStatus !== reg ? candidate.ballotStatus : "";
+  const coalition = displayValue(candidate.coalition);
+  return `<a class="candidate-card candidate-card-pro" href="${path}" data-route="${path}">
+    <div class="cand-photo-wrap">${photoMarkup(candidate)}</div>
     <div class="cand-body">
-      <div class="cand-topline"><span class="number">${esc(candidate.number || "—")}</span><span class="status ${statusClass(candidate.status)}">${esc(candidate.status || "Situação não informada")}</span></div>
+      <div class="cand-topline"><span class="number">${esc(candidate.number || "—")}</span><span class="status ${statusClass(reg)}">${esc(reg || "Situação não informada")}</span></div>
       <h3>${esc(candidate.name || candidate.fullName)}</h3>
-      <p><b>${esc(candidate.party || "Sem sigla")}</b>${candidate.partyName ? ` · ${esc(candidate.partyName)}` : ""}</p>
+      <p class="cand-party"><b>${esc(candidate.party || "Sem sigla")}</b>${candidate.partyName ? `<span>${esc(candidate.partyName)}</span>` : ""}</p>
+      ${ballot ? `<p class="cand-meta-line"><span class="candidacy-chip">${esc(ballot)}</span></p>` : ""}
+      ${coalition ? `<p class="cand-meta-line cand-coalition" title="Coligação">${esc(coalition)}</p>` : ""}
     </div>
   </a>`;
+}
+
+function renderCandidateMetrics(candidates) {
+  const root = $("#candidateMetrics");
+  if (!root) return;
+  const list = candidates || [];
+  const parties = new Set(list.map(c => c.party).filter(Boolean)).size;
+  const deferidos = list.filter(c => /deferid/i.test(String(c.registrationStatus || c.status))).length;
+  const concorrendo = list.filter(c => /concorrendo/i.test(String(c.ballotStatus || ""))).length;
+  root.innerHTML = `
+    <article><span>Candidaturas no cargo</span><strong>${fmt.format(list.length)}</strong><small>Fonte DivulgaCandContas</small></article>
+    <article><span>Partidos distintos</span><strong>${fmt.format(parties)}</strong><small>Siglas registradas</small></article>
+    <article><span>Registro deferido</span><strong>${fmt.format(deferidos)}</strong><small>Situação cadastral</small></article>
+    <article><span>Concorrendo</span><strong>${fmt.format(concorrendo)}</strong><small>Totalização oficial</small></article>`;
+}
+
+function renderCandidateDetailView(candidate, office, data) {
+  const scope = String(office) === "1" ? "BR" : "MA";
+  const reg = candidate.registrationStatus || candidate.status;
+  const ballot = candidate.ballotStatus;
+  const sourceLink = divulgacandUrl(office, candidate);
+  const identificacao = [
+    factItem("Nome completo", candidate.fullName),
+    factItem("Nome de urna", candidate.name),
+    factItem("Número", candidate.number),
+    factItem("Título de eleitor", candidate.tituloEleitor),
+    factItem("Identificador TSE", candidate.id)
+  ].join("");
+  const candidatura = [
+    factItem("Cargo", officeLabel(office)),
+    factItem("UF da candidatura", candidate.uf || scope),
+    factItem("Partido (sigla)", candidate.party),
+    factItem("Partido (nome)", candidate.partyName),
+    factItem("Situação do registro", reg),
+    factItem("Totalização", ballot),
+    factItem("Coligação", candidate.coalition),
+    factItem("Composição da coligação", candidate.coalitionComposition),
+    factItem("Federação", candidate.federation),
+    factItem("Legenda", candidate.legenda),
+    factItem("Candidato apto", candidate.eligible === false ? "Não" : candidate.eligible ? "Sim" : ""),
+    factItem("Reeleição", candidate.reeleicao ? "Sim" : "")
+  ].join("");
+  const pessoais = [
+    factItem("Data de nascimento", formatBirthDate(candidate.birthDate)),
+    factItem("Sexo", candidate.sex),
+    factItem("Cor / raça", candidate.race),
+    factItem("Estado civil", candidate.maritalStatus),
+    factItem("Nacionalidade", candidate.nationality),
+    factItem("Naturalidade", candidate.naturality || [candidate.birthCity, candidate.birthUf].filter(Boolean).join(" — ")),
+    factItem("Grau de instrução", candidate.education),
+    factItem("Ocupação", candidate.occupation)
+  ].join("");
+  const patrimonio = candidate.totalAssets !== null && candidate.totalAssets !== undefined && Number.isFinite(Number(candidate.totalAssets))
+    ? factItem("Total de bens declarados", moneyFmt.format(Number(candidate.totalAssets)))
+    : "";
+  const contato = [
+    ...(candidate.emails || []).map((e, i) => factItem(i === 0 ? "E-mail" : "E-mail adicional", e)),
+    ...(candidate.sites || []).map((s, i) => factItem(i === 0 ? "Site" : "Site adicional", s))
+  ].join("");
+  const sections = [
+    factSection("Identificação", identificacao),
+    factSection("Candidatura e legenda", candidatura),
+    factSection("Dados pessoais", pessoais),
+    patrimonio ? factSection("Patrimônio declarado", patrimonio) : "",
+    contato ? factSection("Contatos publicados", contato) : ""
+  ].filter(Boolean).join("");
+  const chips = [reg, ballot && ballot !== reg ? ballot : "", candidate.coalition].filter(Boolean).map(t => `<span class="candidacy-chip ${statusClass(t)}">${esc(t)}</span>`).join("");
+  return `<div class="detail-hero candidacy-detail-hero">
+      ${photoMarkup(candidate, true)}
+      <div class="detail-title">
+        <span class="eyebrow">${esc(officeLabel(office).toUpperCase())} • ${esc(scope)} • 2026</span>
+        <h1>${esc(candidate.name || candidate.fullName)}</h1>
+        <p class="detail-subname">${esc(candidate.fullName || "")}</p>
+        <div class="detail-chips">${chips || `<span class="status">${esc(reg || "Situação não informada")}</span>`}</div>
+      </div>
+      <div class="detail-hero-side">
+        <div class="detail-number" aria-label="Número de urna">${esc(candidate.number || "—")}</div>
+        <p class="detail-party-block"><strong>${esc(candidate.party || "—")}</strong>${candidate.partyName ? `<span>${esc(candidate.partyName)}</span>` : ""}</p>
+        <div class="detail-actions">
+          <button class="btn ghost" type="button" id="printCandidate">Imprimir / PDF</button>
+          <a class="btn secondary" target="_blank" rel="noopener" href="${esc(sourceLink)}">Ficha no DivulgaCand ↗</a>
+        </div>
+      </div>
+    </div>
+    <div class="detail-sections">${sections || `<div class="empty">A fonte não retornou campos adicionais para esta candidatura.</div>`}</div>
+    <div class="notice">Informações conforme DivulgaCandContas (TSE). Registro, totalização e patrimônio podem ser atualizados pela Justiça Eleitoral.</div>
+    <div class="data-meta">${dataMeta(data)}</div>`;
 }
 
 function renderBarChart(root, items, labelKey, valueKey, maxItems = 15) {
@@ -245,6 +364,7 @@ async function loadCandidatePage(refresh = false) {
   try {
     const data = await getCandidates(office, refresh);
     populateCandidateFilters(data.candidates);
+    renderCandidateMetrics(data.candidates);
     $("#candidateMeta").innerHTML = dataMeta(data);
     renderCandidateCatalog();
   } catch (error) { root.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
@@ -294,29 +414,24 @@ function renderPagination(root, current, total, onChange) {
 }
 
 async function loadCandidateDetail(office, id) {
-  setBreadcrumbs([{ label: "Candidaturas", path: "/candidatos" }, { label: "Detalhes" }]);
-  const root = $("#candidateDetail"); root.innerHTML = `<div class="loading">Carregando candidatura…</div>`;
+  setBreadcrumbs([{ label: "Candidaturas", path: "/candidatos" }, { label: "Ficha oficial" }]);
+  const root = $("#candidateDetail"); root.innerHTML = `<div class="loading">Consultando ficha oficial no TSE…</div>`;
   try {
-    const data = await getCandidates(office);
-    const candidate = data.candidates.find(c => String(c.id) === String(id)) || data.candidates.find(c => String(c.number) === String(id));
-    if (!candidate) { root.innerHTML = `<div class="error">Candidatura não localizada no conjunto atual.</div>`; return; }
+    let data;
+    try {
+      data = await api(`/api/candidato?cargo=${encodeURIComponent(office)}&id=${encodeURIComponent(id)}`);
+    } catch {
+      data = await getCandidates(office);
+      const candidate = data.candidates.find(c => String(c.id) === String(id)) || data.candidates.find(c => String(c.number) === String(id));
+      if (!candidate) throw new Error("Candidatura não localizada no conjunto atual.");
+      data = { ...data, candidate };
+    }
+    const candidate = data.candidate;
+    if (!candidate) { root.innerHTML = `<div class="error">Candidatura não localizada.</div>`; return; }
     document.title = `${candidate.name} — ${officeLabel(office)} | Cívica MA`;
-    root.innerHTML = `<div class="detail-hero">
-      ${photoMarkup(candidate, true)}
-      <div class="detail-title"><span class="eyebrow">${esc(officeLabel(office).toUpperCase())}</span><h1>${esc(candidate.name || candidate.fullName)}</h1><p>${esc(candidate.fullName || "")}</p><span class="status ${statusClass(candidate.status)}">${esc(candidate.status || "Situação não informada")}</span></div>
-      <div><div class="detail-number">${esc(candidate.number || "—")}</div><div class="detail-actions"><button class="btn ghost" id="printCandidate">Imprimir / PDF</button><a class="btn secondary" target="_blank" rel="noopener" href="${esc(cfg.sources.divulga)}">Abrir fonte ↗</a></div></div>
-    </div>
-    <div class="detail-grid">
-      <div class="info-card"><span>Partido</span><strong>${esc(candidate.party || "Não informado")}${candidate.partyName ? ` — ${esc(candidate.partyName)}` : ""}</strong></div>
-      <div class="info-card"><span>Número</span><strong>${esc(candidate.number || "Não informado")}</strong></div>
-      <div class="info-card"><span>Situação</span><strong>${esc(candidate.status || "Não informada")}</strong></div>
-      <div class="info-card"><span>Coligação</span><strong>${esc(candidate.coalition || "Não informada / não aplicável")}</strong></div>
-      <div class="info-card"><span>Federação</span><strong>${esc(candidate.federation || "Não informada / não aplicável")}</strong></div>
-      <div class="info-card"><span>Cargo</span><strong>${esc(officeLabel(office))}</strong></div>
-    </div>
-    <div class="notice">Dados exibidos conforme retorno da fonte consultada. A situação de registro pode mudar por decisões da Justiça Eleitoral.</div>
-    <div class="data-meta">${dataMeta(data)}</div>`;
-    wireImageFallbacks(root); $("#printCandidate").onclick = () => window.print();
+    root.innerHTML = renderCandidateDetailView(candidate, office, data);
+    wireImageFallbacks(root);
+    $("#printCandidate")?.addEventListener("click", () => window.print());
   } catch (error) { root.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
 }
 
@@ -481,8 +596,14 @@ function bindEvents() {
   $("#sectionSearch").oninput = e => { state.sectionFilters.search = e.target.value; state.sectionFilters.page = 1; const data = state.sectionData.get(state.municipality); if (data) renderSections(data); };
   $("#municipalitySearch").oninput = e => renderMunicipalities(e.target.value);
   $("#refreshAll").onclick = async () => { state.summary = null; state.candidateData.clear(); state.sectionData.clear(); await loadOverview(true); toast("Painel atualizado."); };
-  $("#exportCandidatesCsv").onclick = () => { const list = filteredCandidates(); exportCsv(`candidaturas-${state.office}-ma-2026.csv`, ["Nome de urna","Nome completo","Número","Partido","Partido - nome","Situação","Coligação","Federação"], list.map(c => [c.name,c.fullName,c.number,c.party,c.partyName,c.status,c.coalition,c.federation])); };
-  $("#exportCandidatesXls").onclick = () => { const list = filteredCandidates(); exportXls(`candidaturas-${state.office}-ma-2026.xls`, ["Nome de urna","Nome completo","Número","Partido","Situação"], list.map(c => [c.name,c.fullName,c.number,c.party,c.status])); };
+  $("#exportCandidatesCsv").onclick = () => {
+    const list = filteredCandidates();
+    exportCsv(`candidaturas-${state.office}-ma-2026.csv`, ["ID TSE","Nome de urna","Nome completo","Número","Partido","Partido - nome","Situação registro","Totalização","Coligação","Federação","UF","Título eleitor"], list.map(c => [c.id,c.name,c.fullName,c.number,c.party,c.partyName,c.registrationStatus || c.status,c.ballotStatus,c.coalition,c.federation,c.uf,c.tituloEleitor]));
+  };
+  $("#exportCandidatesXls").onclick = () => {
+    const list = filteredCandidates();
+    exportXls(`candidaturas-${state.office}-ma-2026.xls`, ["Nome de urna","Número","Partido","Situação","Coligação"], list.map(c => [c.name,c.number,c.party,c.registrationStatus || c.status,c.coalition]));
+  };
   $("#exportSectionsCsv").onclick = () => { const data=state.sectionData.get(state.municipality);if(!data)return;const list=filteredSections(data);exportCsv(`secoes-${slugify(state.municipality)}-2026.csv`,["Município","Bairro do local","Zona","Seção","Local de votação","Endereço","CEP","Eleitores","Acessibilidade"],list.map(x=>[x.municipio,x.bairro,x.zona,x.secao,x.localNome,x.endereco,x.cep,x.eleitores,x.acessibilidade])); };
   $("#exportSectionsXls").onclick = () => { const data=state.sectionData.get(state.municipality);if(!data)return;const list=filteredSections(data);exportXls(`secoes-${slugify(state.municipality)}-2026.xls`,["Município","Bairro do local","Zona","Seção","Local de votação","Eleitores"],list.map(x=>[x.municipio,x.bairro,x.zona,x.secao,x.localNome,x.eleitores])); };
 

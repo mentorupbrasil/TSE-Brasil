@@ -45,7 +45,7 @@
     </nav>
     <div class="sidebar-meta">
       <div><b>Portal independente</b><span>Organiza dados públicos da Justiça Eleitoral. Não é site oficial do TSE ou TRE-MA.</span></div>
-      <div class="sidebar-version">v7.0</div>
+      <div class="sidebar-version">v7.1</div>
     </div>
   </aside>
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -114,11 +114,12 @@
     </section>
 
     <section class="page" id="page-candidates" data-page="candidates">
-      <div class="page-head">
-        <div><span class="eyebrow">DIVULGACANDCONTAS</span><h1>Candidaturas registradas</h1><p>Consulta organizada dos nomes publicados para as Eleições Gerais de 2026.</p></div>
-        <div class="toolbar"><button class="btn ghost" id="exportCandidatesCsv">CSV</button><button class="btn ghost" id="exportCandidatesXls">Excel</button></div>
+      <div class="page-head candidacy-head">
+        <div><span class="eyebrow">DIVULGACANDCONTAS • TSE</span><h1>Candidaturas registradas</h1><p>Fichas oficiais com foto, número de urna, partido, coligação e situação de registro — Eleições Gerais 2026, Maranhão.</p></div>
+        <div class="toolbar"><button class="btn ghost" id="exportCandidatesCsv">Exportar CSV</button><button class="btn ghost" id="exportCandidatesXls">Exportar Excel</button></div>
       </div>
-      <div class="filter-panel">
+      <div class="metrics four candidacy-metrics" id="candidateMetrics" aria-live="polite"></div>
+      <div class="filter-panel candidacy-filters">
         <label>Cargo<select id="candidateOffice"></select></label>
         <label>Partido<select id="candidateParty"><option value="">Todos</option></select></label>
         <label>Situação<select id="candidateStatus"><option value="">Todas</option></select></label>
