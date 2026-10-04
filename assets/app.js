@@ -131,8 +131,6 @@ async function api(path, { refresh = false } = {}) {
 
 function setPage(page) {
   $$(".page").forEach(el => el.classList.toggle("active", el.dataset.page === page));
-  $("#mainContent")?.classList.toggle("main-vote-launch", page === "vote-launch");
-  $("#breadcrumbs")?.classList.toggle("breadcrumbs-vl", page === "vote-launch");
   const navMap = { "candidate-detail": "candidates", "municipality-detail": "municipalities" };
   const activeNav = navMap[page] || page;
   $$(".nav-link").forEach(el => el.classList.toggle("active", el.dataset.nav === activeNav));
@@ -183,7 +181,7 @@ async function route() {
     if (routeInfo.page === "municipality-detail") await loadMunicipalityDetail(routeInfo.slug);
     if (routeInfo.page === "people") { setBreadcrumbs([{ label: "Base de pessoas" }]); renderPeoplePage(); }
     if (routeInfo.page === "vote-launch") {
-      setBreadcrumbs([{ label: "Lançamento de voto (demonstração)" }]);
+      setBreadcrumbs([{ label: "Tramitação de voto (demonstração)" }]);
       if (window.CivicaVoteLaunch) {
         await CivicaVoteLaunch.mount({ getCandidates, esc, officeLabel, toast, wireImageFallbacks });
       }

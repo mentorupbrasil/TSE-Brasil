@@ -138,12 +138,14 @@ window.CivicaVoteLaunch = (() => {
       const photo = c?.photo
         ? `<img class="vl-cand-photo" src="${esc(c.photo)}" alt="" loading="lazy" data-image-fallback="${esc(initials)}">`
         : `<div class="vl-cand-photo-fallback">${esc(initials)}</div>`;
+      const party = c?.party ? `<div class="vl-cand-party">${esc(c.party)}</div>` : "";
       return `<div class="vl-branch on" data-office="${esc(item.office)}" id="vlBranch${esc(item.office)}">
         <div class="vl-branch-connector"></div>
         <div class="vl-office-label">${esc(officeLabel(item.office))}</div>
         <div class="vl-cand-card">
           ${photo}
           <div class="vl-cand-num">${esc(num)}</div>
+          ${party}
           <div class="vl-cand-name">${esc(name)}</div>
           <div class="vl-node-bar"><div class="vl-node-bar-fill" id="vlBar${esc(item.office)}"></div></div>
         </div>
@@ -178,12 +180,12 @@ window.CivicaVoteLaunch = (() => {
 
   async function loadCatalog(office) {
     if (catalog.has(office)) return;
-    log(`SYNC :: catálogo cargo ${officeLabel(office)}…`, "info");
+    log(`Carregando candidatos: ${officeLabel(office)}…`, "info");
     const data = await deps.getCandidates(office);
     const list = (data.candidates || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name), "pt-BR"));
     catalog.set(office, list);
     populateSelect(office);
-    log(`OK :: ${list.length} candidaturas indexadas (${officeLabel(office)})`, "dim");
+    log(`${list.length} candidaturas disponíveis (${officeLabel(office)}).`, "dim");
   }
 
   async function loadAllCatalogs() {
@@ -263,14 +265,14 @@ window.CivicaVoteLaunch = (() => {
     btnStop.disabled = false;
     renderTree();
     resetNodeVisuals();
-    log("INIT :: canal de tramitação aberto <demo local>", "info");
+    log("Início da tramitação simulada (demonstração local).", "info");
     let totalSteps = chain.length * cycles;
     let doneSteps = 0;
     let registered = 0;
     const hub = document.getElementById("vlHub");
     for (let cycle = 1; cycle <= cycles; cycle++) {
       if (abort) break;
-      log(`CICLO ${cycle}/${cycles} :: início do lote`, "warn");
+      log(`Ciclo ${cycle} de ${cycles} — processando chapa selecionada.`, "warn");
       for (const item of chain) {
         if (abort) break;
         const c = selectedCandidate(item.office);
@@ -293,19 +295,19 @@ window.CivicaVoteLaunch = (() => {
         setStat("vlStatReg", String(registered));
         setStat("vlStatCycle", `${cycle}/${cycles}`);
         const hash = fakeHash(`${c.id}-${c.number}-${cycle}-${Date.now()}`);
-        log(`REG :: ${officeLabel(item.office).toUpperCase()} · nº ${esc(c.number)} · ${esc(c.name)} · sig ${hash}`, "ok");
+        log(`Registrado: ${officeLabel(item.office)} · nº ${esc(c.number)} · ${esc(c.name)} · ref. ${hash}`, "ok");
         branch?.classList.remove("active");
         branch?.classList.add("done");
         await sleep(cycles > 10 ? 40 : 90);
       }
       if (!abort) {
         playUrnaPilili();
-        log("PILILI :: fim do ciclo de votação (réplica sonora UE)", "info");
+        log("Encerramento do ciclo — áudio de fim de votação.", "info");
         await sleep(cycles > 10 ? 180 : 420);
       }
     }
-    if (abort) log("ABORT :: tramitação interrompida pelo operador", "warn");
-    else log(`DONE :: ${registered} registros simulados concluídos (sem efeito real)`, "info");
+    if (abort) log("Tramitação interrompida pelo usuário.", "warn");
+    else log(`Concluído: ${registered} registro(s) simulado(s). Sem efeito em urna real.`, "info");
     hub?.classList.remove("active");
     running = false;
     btnStart.disabled = false;
@@ -362,7 +364,7 @@ window.CivicaVoteLaunch = (() => {
     document.getElementById("vlClearLog")?.addEventListener("click", () => {
       const out = document.getElementById("vlTerminalOut");
       if (out) out.innerHTML = "";
-      log("LOG limpo.", "dim");
+      log("Registro limpo.", "dim");
     });
   }
 
@@ -370,67 +372,72 @@ window.CivicaVoteLaunch = (() => {
     const root = document.getElementById("voteLaunchRoot");
     if (!root) return;
     root.innerHTML = `<div class="vl-shell">
-      <div class="vl-disclaimer"><strong>DEMONSTRAÇÃO</strong><span>Interface fictícia de tramitação visual. Não registra voto real, não acessa urna nem TSE. Uso educacional / apresentação do fluxo do voto casado com dados públicos de candidatos.</span></div>
-      <header class="vl-header">
-        <div>
-          <h1 class="vl-title">Terminal de lançamento · v0.9</h1>
-          <p class="vl-subtitle">Selecione os cargos e candidatos. O pacote percorre a árvore na ordem oficial e simula o registro com feedback sonoro.</p>
+      <div class="vl-notice"><strong>Demonstração</strong> Fluxo visual do voto casado com candidatos reais (TSE). Não registra voto, não conecta à urna eletrônica.</div>
+      <header class="tse-page-header">
+        <div class="tse-page-header-row">
+          <div>
+            <p class="eyebrow">Simulador de tramitação · Maranhão 2026</p>
+            <h1>Lançamento de voto</h1>
+            <p>Monte a chapa, acompanhe a ordem oficial de registro entre os cargos e ouça a confirmação sonora da urna.</p>
+          </div>
         </div>
       </header>
-      <div class="vl-grid">
-        <section class="vl-panel">
-          <div class="vl-panel-head">Cargos &amp; candidatos</div>
+      <div class="vl-layout">
+        <aside class="vl-panel-block">
+          <div class="tse-panel-head"><h2>Configuração da chapa</h2></div>
           <div class="vl-panel-body">
             <div class="vl-cargo-list">
               ${VOTE_CHAIN.map(item => `<div class="vl-cargo-item ${DEFAULT_ON.has(item.office) ? "on" : ""}" id="vlCargoBox${esc(item.office)}">
                 <div class="vl-cargo-top">
                   <label><input type="checkbox" id="vlCargo${esc(item.office)}" ${DEFAULT_ON.has(item.office) ? "checked" : ""}> ${esc(item.label)}</label>
                 </div>
-                <input type="search" id="vlSearch${esc(item.office)}" placeholder="Filtrar nome ou número" autocomplete="off">
-                <select id="vlSelect${esc(item.office)}"><option value="">Carregando…</option></select>
+                <div class="vl-field"><span>Buscar</span><input type="search" id="vlSearch${esc(item.office)}" placeholder="Nome ou número" autocomplete="off"></div>
+                <div class="vl-field"><span>Candidato</span><select id="vlSelect${esc(item.office)}"><option value="">Carregando…</option></select></div>
               </div>`).join("")}
             </div>
-            <div class="vl-mass-row">
-              <label for="vlMass">Intensidade (ciclos em massa)</label>
-              <input type="range" id="vlMass" min="1" max="120" value="1">
-              <output id="vlMassOut" for="vlMass">1</output>
-            </div>
-            <div class="vl-sound-block">
-              <label class="vl-sound-row"><input type="checkbox" id="vlSound" checked> Som oficial (confirma-urna.mp3)</label>
-              <button type="button" class="vl-btn vl-btn-small" id="vlTestSound">Testar confirmação</button>
-            </div>
-            <div class="vl-actions">
-              <button type="button" class="vl-btn" id="vlStart">Iniciar tramitação</button>
-              <button type="button" class="vl-btn danger" id="vlStop" disabled>Parar</button>
+            <div class="vl-controls">
+              <div class="vl-mass-row">
+                <label for="vlMass">Repetições do fluxo completo</label>
+                <input type="range" id="vlMass" min="1" max="120" value="1" aria-valuetext="1">
+                <div class="vl-mass-meta"><span>Ciclos</span><output id="vlMassOut" for="vlMass">1</output></div>
+              </div>
+              <label class="vl-sound-row"><input type="checkbox" id="vlSound" checked> Som oficial de confirmação</label>
+              <button type="button" class="btn btn-tse btn-tse-secondary" id="vlTestSound">Testar som da urna</button>
+              <div class="vl-actions">
+                <button type="button" class="btn btn-tse btn-tse-primary" id="vlStart">Iniciar tramitação</button>
+                <button type="button" class="btn btn-tse btn-tse-ghost" id="vlStop" disabled>Interromper</button>
+              </div>
             </div>
           </div>
-        </section>
-        <section class="vl-panel">
-          <div class="vl-panel-head">Árvore de tramitação</div>
-          <div class="vl-panel-body vl-tree-wrap" id="vlTreeWrap">
-            <div class="vl-global-progress">
-              <span><span>Progresso global</span><span id="vlGlobalPct">0%</span></span>
-              <div class="vl-bar"><div class="vl-bar-fill" id="vlGlobalBar"></div></div>
-            </div>
+        </aside>
+        <section class="vl-panel-block vl-tree-wrap" id="vlTreeWrap">
+          <div class="tse-panel-head">
+            <div><h2>Árvore de tramitação</h2><p>Ordem: majoritários → proporcionais</p></div>
+          </div>
+          <div class="vl-progress-block">
+            <span><span>Andamento geral</span><span id="vlGlobalPct">0%</span></span>
+            <div class="vl-bar"><div class="vl-bar-fill" id="vlGlobalBar"></div></div>
+          </div>
+          <div class="vl-tree-area">
             <div class="vl-tree">
-              <div class="vl-hub" id="vlHub">NÚCLEO DE REGISTRO</div>
+              <div class="vl-hub" id="vlHub">Central de registro</div>
               <div class="vl-hub-trunk"></div>
               <div class="vl-branches" id="vlBranches"></div>
             </div>
-            <div class="vl-packet" id="vlPacket" aria-hidden="true"></div>
           </div>
+          <div class="vl-packet" id="vlPacket" aria-hidden="true"></div>
         </section>
-        <section class="vl-panel vl-terminal">
-          <div class="vl-panel-head">Log do sistema</div>
-          <div class="vl-terminal-out" id="vlTerminalOut"></div>
+        <aside class="vl-panel-block vl-log-panel">
+          <div class="tse-panel-head"><h2>Registro de operações</h2></div>
+          <div class="vl-terminal-out" id="vlTerminalOut" aria-live="polite"></div>
           <div class="vl-stats">
-            <div>Registros simulados<b id="vlStatReg">0</b></div>
-            <div>Ciclo<b id="vlStatCycle">—</b></div>
+            <div>Registros<b id="vlStatReg">0</b></div>
+            <div>Ciclo atual<b id="vlStatCycle">—</b></div>
           </div>
-          <div class="vl-panel-body" style="padding-top:0;border-top:1px solid var(--vl-line)">
-            <button type="button" class="vl-btn" id="vlClearLog" style="width:100%">Limpar log</button>
+          <div class="vl-log-actions">
+            <button type="button" class="btn btn-tse btn-tse-ghost" id="vlClearLog">Limpar registro</button>
           </div>
-        </section>
+        </aside>
       </div>
     </div>`;
   }
@@ -440,17 +447,17 @@ window.CivicaVoteLaunch = (() => {
     renderShell();
     bindCargoEvents();
     renderTree();
-    log("BOOT :: terminal pronto. aguardando seleção…", "dim");
+    log("Sistema pronto. Selecione os candidatos e inicie a tramitação.", "dim");
     setStat("vlStatReg", "0");
     setStat("vlStatCycle", "—");
     try {
       await loadAllCatalogs();
       renderTree();
-      log("READY :: catálogos TSE sincronizados.", "info");
+      log("Dados oficiais de candidatura sincronizados.", "info");
       loadUrnaSounds().then(() => {
-        log("AUDIO :: confirma-urna.mp3 carregado.", "dim");
-        if (urnaBuffers.pilili) log("AUDIO :: pilili auxiliar disponível.", "dim");
-      }).catch(() => log("WARN :: confirma-urna.mp3 não encontrado.", "warn"));
+        log("Áudio oficial de confirmação carregado.", "dim");
+        if (urnaBuffers.pilili) log("Áudio de encerramento de ciclo disponível.", "dim");
+      }).catch(() => log("Arquivo confirma-urna.mp3 não encontrado.", "warn"));
     } catch (e) {
       log(`ERR :: ${esc(e.message)}`, "warn");
       deps.toast?.(e.message || "Falha ao carregar candidatos.");
