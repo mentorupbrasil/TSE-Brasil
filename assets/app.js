@@ -64,9 +64,42 @@ function factItem(label, value) {
   if (!text) return "";
   return `<div class="tse-data-row"><div class="tse-data-label">${esc(label)}</div><div class="tse-data-value">${esc(text)}</div></div>`;
 }
-function factSection(title, html) {
+function factItemHtml(label, innerHtml) {
+  if (!innerHtml || !String(innerHtml).trim()) return "";
+  return `<div class="tse-data-row"><div class="tse-data-label">${esc(label)}</div><div class="tse-data-value">${innerHtml}</div></div>`;
+}
+function factSection(title, html, sectionId = "") {
   if (!html.trim()) return "";
-  return `<section class="tse-ficha-block"><h2 class="tse-ficha-block-title">${esc(title)}</h2><div class="tse-data-table">${html}</div></section>`;
+  const idAttr = sectionId ? ` id="${esc(sectionId)}"` : "";
+  return `<section class="tse-ficha-block"${idAttr}><h2 class="tse-ficha-block-title">${esc(title)}</h2><div class="tse-data-table">${html}</div></section>`;
+}
+function formatCnpj(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length !== 14) return displayValue(value);
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+}
+function renderAssetsTable(assets, totalAssets) {
+  const rows = (assets || []).filter(a => a.description || a.type || a.value);
+  if (!rows.length && totalAssets == null) return "";
+  const body = rows.length
+    ? rows.map(a => `<tr><td>${esc(a.type || "—")}</td><td>${esc(a.description || "—")}</td><td class="num">${moneyFmt.format(a.value || 0)}</td></tr>`).join("")
+    : `<tr><td colspan="3">Detalhamento não publicado; apenas total informado.</td></tr>`;
+  const foot = totalAssets != null ? `<tfoot><tr><td colspan="2"><strong>Total declarado</strong></td><td class="num"><strong>${moneyFmt.format(Number(totalAssets))}</strong></td></tr></tfoot>` : "";
+  return `<div class="tse-table-wrap"><table class="tse-table"><thead><tr><th>Tipo de bem</th><th>Descrição</th><th>Valor (R$)</th></tr></thead><tbody>${body}</tbody>${foot}</table></div>`;
+}
+function renderPreviousElectionsTable(items) {
+  const rows = (items || []).filter(e => e.year || e.office);
+  if (!rows.length) return "";
+  const body = rows.map(e => {
+    const link = e.link ? `<a class="tse-table-link" href="${esc(e.link)}" target="_blank" rel="noopener">${esc(e.year || "—")}</a>` : esc(e.year || "—");
+    return `<tr><td>${link}</td><td>${esc(e.office || "—")}</td><td>${esc(e.locality || e.uf || "—")}</td><td>${esc(e.party || "—")}</td><td>${esc(e.number || "—")}</td><td>${statusTag(e.status || "—", e.status)}</td></tr>`;
+  }).join("");
+  return `<div class="tse-table-wrap"><table class="tse-table"><thead><tr><th>Ano</th><th>Cargo</th><th>Local</th><th>Partido</th><th>Nº</th><th>Resultado</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function renderFichaNav(sections) {
+  const items = sections.filter(s => s.id && s.label);
+  if (items.length < 2) return "";
+  return `<nav class="tse-ficha-nav" aria-label="Seções da ficha"><p class="tse-ficha-nav-title">Nesta ficha</p><ul>${items.map(s => `<li><a href="#${esc(s.id)}">${esc(s.label)}</a></li>`).join("")}</ul></nav>`;
 }
 function statusTag(label, statusText = "") {
   const text = displayValue(label);
@@ -262,23 +295,30 @@ function renderCandidateDetailView(candidate, office, data) {
   const identificacao = [
     factItem("Nome completo", candidate.fullName),
     factItem("Nome de urna", candidate.name),
-    factItem("Número", candidate.number),
+    factItem("Número na urna", candidate.number),
     factItem("Título de eleitor", candidate.tituloEleitor),
-    factItem("Identificador TSE", candidate.id)
+    factItem("Identificador no TSE", candidate.id),
+    factItem("Última atualização na fonte", candidate.lastUpdate || data.sourceUpdatedAt)
   ].join("");
   const candidatura = [
     factItem("Cargo", officeLabel(office)),
     factItem("UF da candidatura", candidate.uf || scope),
+    factItem("Localidade", candidate.candidacyLocale),
+    factItemHtml("Situação do registro", statusTag(reg || "Não informada", reg)),
+    factItemHtml("Totalização", ballot ? statusTag(ballot, ballot) : ""),
+    factItem("Detalhe da situação", candidate.situationDetail),
     factItem("Partido (sigla)", candidate.party),
     factItem("Partido (nome)", candidate.partyName),
-    factItem("Situação do registro", reg),
-    factItem("Totalização", ballot),
+    factItem("Situação do partido", candidate.partyStatus),
     factItem("Coligação", candidate.coalition),
     factItem("Composição da coligação", candidate.coalitionComposition),
     factItem("Federação", candidate.federation),
     factItem("Legenda", candidate.legenda),
-    factItem("Candidato apto", candidate.eligible === false ? "Não" : candidate.eligible ? "Sim" : ""),
-    factItem("Reeleição", candidate.reeleicao ? "Sim" : "")
+    factItemHtml("Candidato apto", candidate.eligible === false ? statusTag("Não", "indeferido") : candidate.eligible ? statusTag("Sim", "deferido") : ""),
+    factItem("Reeleição", candidate.reeleicao ? "Sim" : candidate.reeleicao === false ? "Não" : ""),
+    factItem("CNPJ de campanha", formatCnpj(candidate.campaignCnpj)),
+    candidate.campaignSpending != null && Number.isFinite(candidate.campaignSpending) ? factItem("Gastos de campanha (1º turno)", moneyFmt.format(candidate.campaignSpending)) : "",
+    factItem("Informações complementares", candidate.complementaryInfo)
   ].join("");
   const pessoais = [
     factItem("Data de nascimento", formatBirthDate(candidate.birthDate)),
@@ -288,46 +328,78 @@ function renderCandidateDetailView(candidate, office, data) {
     factItem("Nacionalidade", candidate.nationality),
     factItem("Naturalidade", candidate.naturality || [candidate.birthCity, candidate.birthUf].filter(Boolean).join(" — ")),
     factItem("Grau de instrução", candidate.education),
-    factItem("Ocupação", candidate.occupation)
+    factItem("Ocupação principal", candidate.occupation)
   ].join("");
-  const patrimonio = candidate.totalAssets !== null && candidate.totalAssets !== undefined && Number.isFinite(Number(candidate.totalAssets))
-    ? factItem("Total de bens declarados", moneyFmt.format(Number(candidate.totalAssets)))
-    : "";
   const contato = [
-    ...(candidate.emails || []).map((e, i) => factItem(i === 0 ? "E-mail" : "E-mail adicional", e)),
-    ...(candidate.sites || []).map((s, i) => factItem(i === 0 ? "Site" : "Site adicional", s))
+    ...(candidate.emails || []).map((e, i) => factItemHtml(i === 0 ? "E-mail" : "E-mail adicional", `<a href="mailto:${encodeURIComponent(e)}">${esc(e)}</a>`)),
+    ...(candidate.sites || []).map((s, i) => {
+      const url = /^https?:\/\//i.test(s) ? s : `https://${s}`;
+      return factItemHtml(i === 0 ? "Site" : "Site adicional", `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(s)}</a>`);
+    })
   ].join("");
-  const sections = [
-    factSection("Identificação", identificacao),
-    factSection("Candidatura e legenda", candidatura),
-    factSection("Dados pessoais", pessoais),
-    patrimonio ? factSection("Patrimônio declarado", patrimonio) : "",
-    contato ? factSection("Contatos publicados", contato) : ""
-  ].filter(Boolean).join("");
+  const assetsTable = renderAssetsTable(candidate.assets, candidate.totalAssets);
+  const historyTable = renderPreviousElectionsTable(candidate.previousElections);
+  const navSections = [
+    { id: "ficha-identificacao", label: "Identificação", html: identificacao },
+    { id: "ficha-candidatura", label: "Candidatura", html: candidatura },
+    { id: "ficha-pessoais", label: "Dados pessoais", html: pessoais },
+    { id: "ficha-patrimonio", label: "Patrimônio", html: assetsTable, isTable: true },
+    { id: "ficha-historico", label: "Eleições anteriores", html: historyTable, isTable: true },
+    { id: "ficha-contatos", label: "Contatos", html: contato }
+  ].filter(s => s.isTable ? String(s.html).trim() : String(s.html).trim());
+  const blocks = navSections.map(s => {
+    if (s.isTable) {
+      return `<section class="tse-ficha-block" id="${esc(s.id)}"><h2 class="tse-ficha-block-title">${esc(s.label)}</h2>${s.html}</section>`;
+    }
+    return factSection(s.label, s.html, s.id);
+  }).join("");
   const tags = [reg, ballot && ballot !== reg ? ballot : ""].filter(Boolean).map(t => statusTag(t, t)).join("");
-  return `<p class="tse-ficha-back"><a class="btn btn-tse btn-tse-link" href="/candidatos" data-route="/candidatos">${icon("back")} Voltar à lista de candidaturas</a></p>
+  const patrimonioHighlight = candidate.totalAssets != null && Number.isFinite(Number(candidate.totalAssets))
+    ? moneyFmt.format(Number(candidate.totalAssets))
+    : "—";
+  return `<article class="tse-ficha">
+    <div class="tse-ficha-toolbar">
+      <a class="btn btn-tse btn-tse-link" href="/candidatos" data-route="/candidatos">${icon("back")} Voltar ao catálogo</a>
+      <div class="tse-ficha-toolbar-actions">
+        <button type="button" class="btn btn-tse btn-tse-ghost" id="copyCandidateLink">${icon("link")} Copiar link</button>
+        <button type="button" class="btn btn-tse btn-tse-ghost" id="refreshCandidateDetail">${icon("refresh")} Atualizar</button>
+      </div>
+    </div>
     <header class="tse-ficha-banner">
-      <p class="tse-ficha-kicker">${esc(officeLabel(office))} · ${esc(scope)} · Eleições 2026</p>
-      <h1>${esc(candidate.name || candidate.fullName)}</h1>
-    </header>
-    <div class="tse-ficha-intro">
-      ${photoMarkup(candidate, true)}
-      <div class="tse-ficha-intro-main">
-        <div class="tse-ficha-number-row">
-          <div class="tse-ficha-number" aria-label="Número de urna">${esc(candidate.number || "—")}</div>
-          <div class="tse-ficha-tags">${tags || statusTag(reg || "Situação não informada", reg)}</div>
+      <div class="tse-ficha-banner-grid">
+        <div>
+          <p class="tse-ficha-kicker">DivulgaCandContas · ${esc(officeLabel(office))} · ${esc(scope)} · 2026</p>
+          <h1>${esc(candidate.name || candidate.fullName)}</h1>
+          <p class="tse-ficha-banner-sub">${esc(candidate.fullName || "")}</p>
         </div>
-        <p class="tse-ficha-subname">${esc(candidate.fullName || "")}</p>
-        <p class="tse-ficha-party"><strong>${esc(candidate.party || "—")}</strong>${candidate.partyName ? ` — ${esc(candidate.partyName)}` : ""}${candidate.coalition ? `<br><span>Coligação: ${esc(candidate.coalition)}</span>` : ""}</p>
+        <div class="tse-ficha-banner-number" aria-label="Número de urna">${esc(candidate.number || "—")}</div>
+      </div>
+    </header>
+    <div class="tse-ficha-hero">
+      <figure class="tse-ficha-photo">${photoMarkup(candidate, true)}<figcaption>Foto oficial publicada pelo TSE</figcaption></figure>
+      <div class="tse-ficha-hero-main">
+        <div class="tse-ficha-tags">${tags || statusTag(reg || "Situação não informada", reg)}</div>
+        <p class="tse-ficha-party"><strong>${esc(candidate.party || "—")}</strong>${candidate.partyName ? `<span>${esc(candidate.partyName)}</span>` : ""}</p>
+        ${candidate.coalition ? `<p class="tse-ficha-coalition"><span>Coligação</span> ${esc(candidate.coalition)}</p>` : ""}
         <div class="tse-ficha-actions">
-          <button class="btn btn-tse btn-tse-ghost" type="button" id="printCandidate">${icon("print")} Imprimir</button>
-          <a class="btn btn-tse btn-tse-primary" target="_blank" rel="noopener" href="${esc(sourceLink)}">${icon("external")} Ver no DivulgaCandContas</a>
+          <button class="btn btn-tse btn-tse-secondary" type="button" id="printCandidate">${icon("print")} Imprimir ficha</button>
+          <a class="btn btn-tse btn-tse-primary" target="_blank" rel="noopener" href="${esc(sourceLink)}">${icon("external")} Abrir no DivulgaCandContas</a>
         </div>
       </div>
     </div>
-    <div class="tse-ficha-body">${sections || `<div class="empty" style="margin:1rem">A fonte não retornou campos adicionais para esta candidatura.</div>`}</div>
-    <div class="notice">Dados publicados pelo Tribunal Superior Eleitoral via DivulgaCandContas. Situação de registro e totalização podem ser alteradas por decisão da Justiça Eleitoral.</div>
-    <div class="data-meta">${dataMeta(data)}</div>`;
+    <div class="tse-ficha-highlights" aria-label="Resumo da candidatura">
+      <article><span>Situação do registro</span><strong>${esc(reg || "—")}</strong></article>
+      <article><span>Totalização</span><strong>${esc(ballot || "—")}</strong></article>
+      <article><span>Partido</span><strong>${esc(candidate.party || "—")}</strong></article>
+      <article><span>Patrimônio declarado</span><strong>${esc(patrimonioHighlight)}</strong></article>
+    </div>
+    <div class="tse-ficha-layout">
+      ${renderFichaNav(navSections)}
+      <div class="tse-ficha-body">${blocks || `<div class="empty">A fonte não retornou campos adicionais para esta candidatura.</div>`}</div>
+    </div>
+    <div class="notice tse-ficha-notice"><strong>Fonte oficial.</strong> Dados publicados pelo Tribunal Superior Eleitoral via DivulgaCandContas. Registro, totalização, patrimônio e contatos podem ser alterados por decisão da Justiça Eleitoral.</div>
+    <div class="data-meta">${dataMeta(data)}</div>
+  </article>`;
 }
 
 function renderBarChart(root, items, labelKey, valueKey, maxItems = 15) {
@@ -433,25 +505,46 @@ function renderPagination(root, current, total, onChange) {
   create("›", current + 1, current === total);
 }
 
-async function loadCandidateDetail(office, id) {
-  setBreadcrumbs([{ label: "Candidaturas", path: "/candidatos" }, { label: "Ficha oficial" }]);
-  const root = $("#candidateDetail"); root.innerHTML = `<div class="loading">Consultando ficha oficial no TSE…</div>`;
+async function loadCandidateDetail(office, id, refresh = false) {
+  const root = $("#candidateDetail");
+  root.innerHTML = `<div class="loading">Consultando ficha oficial no TSE…</div>`;
   try {
     let data;
     try {
-      data = await api(`/api/candidato?cargo=${encodeURIComponent(office)}&id=${encodeURIComponent(id)}`);
+      data = await api(`/api/candidato?cargo=${encodeURIComponent(office)}&id=${encodeURIComponent(id)}`, { refresh });
     } catch {
-      data = await getCandidates(office);
+      data = await getCandidates(office, refresh);
       const candidate = data.candidates.find(c => String(c.id) === String(id)) || data.candidates.find(c => String(c.number) === String(id));
       if (!candidate) throw new Error("Candidatura não localizada no conjunto atual.");
       data = { ...data, candidate };
     }
     const candidate = data.candidate;
     if (!candidate) { root.innerHTML = `<div class="error">Candidatura não localizada.</div>`; return; }
+    const shortName = candidate.name || candidate.fullName || "Candidatura";
+    setBreadcrumbs([{ label: "Candidaturas", path: "/candidatos" }, { label: shortName.length > 42 ? `${shortName.slice(0, 40)}…` : shortName }]);
     document.title = `${candidate.name} — ${officeLabel(office)} | Cívica MA`;
     root.innerHTML = renderCandidateDetailView(candidate, office, data);
     wireImageFallbacks(root);
     $("#printCandidate")?.addEventListener("click", () => window.print());
+    $("#refreshCandidateDetail")?.addEventListener("click", async () => {
+      toast("Atualizando ficha na fonte oficial…");
+      await loadCandidateDetail(office, id, true);
+      toast("Ficha atualizada.");
+    });
+    $("#copyCandidateLink")?.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(location.href);
+        toast("Link da ficha copiado.");
+      } catch {
+        toast("Não foi possível copiar o link.");
+      }
+    });
+    root.querySelector(".tse-ficha-nav")?.addEventListener("click", e => {
+      const link = e.target.closest("a[href^='#']");
+      if (!link) return;
+      e.preventDefault();
+      document.querySelector(link.getAttribute("href"))?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   } catch (error) { root.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
 }
 

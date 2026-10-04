@@ -1,0 +1,17 @@
+---
+description: Sempre commit e push após alterações no repositório
+alwaysApply: true
+---
+
+# Git: commit e push obrigatórios
+
+Depois de concluir qualquer tarefa que **altere arquivos deste projeto**, faça **sempre** `git commit` e `git push` para o remote (branch atual), **sem esperar o usuário pedir**.
+
+Exceções (somente nestes casos, não commitar):
+
+- O usuário disse explicitamente na mensagem para **não** commitar ou **não** dar push.
+- Não há mudanças para commitar (working tree limpa).
+
+Siga o protocolo de segurança git do usuário: não alterar git config, não force push em main/master, não commitar segredos, não `--amend` salvo quando as regras do usuário permitirem.
+
+Mensagem de commit: clara, 1–2 frases, foco no porquê.
