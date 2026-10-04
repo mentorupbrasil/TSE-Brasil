@@ -3,16 +3,6 @@
 window.CivicaOverview = (() => {
   let deps = null;
 
-  function simVoteCount() {
-    try {
-      const store = deps.getSimulationStore?.();
-      const active = store?.scenarios?.find(s => s.id === store.activeId) || store?.scenarios?.[0];
-      return (active?.entries || []).length;
-    } catch {
-      return 0;
-    }
-  }
-
   function renderHealth(health) {
     const root = document.getElementById("overviewHealthStrip");
     if (!root) return;
@@ -47,7 +37,6 @@ window.CivicaOverview = (() => {
     document.getElementById("metricSections").textContent = t.deferred ? (t.error ? "indisponível" : "—") : deps.formatMaybe(t.count);
     document.getElementById("metricZones").textContent = t.deferred ? "—" : deps.formatMaybe(t.zones);
     document.getElementById("metricElectors").textContent = t.deferred ? "—" : deps.formatMaybe(t.eleitores);
-    document.getElementById("metricSimVotes").textContent = deps.fmt.format(simVoteCount());
   }
 
   function renderOfficeGrid(summary) {
@@ -59,7 +48,6 @@ window.CivicaOverview = (() => {
       return;
     }
     root.innerHTML = offices.map(o => {
-      const path = `/candidatos?cargo=${encodeURIComponent(o.office)}`;
       const count = Number.isFinite(o.count) ? deps.fmt.format(o.count) : "—";
       const err = o.error ? `<small class="office-error">${deps.esc(o.error)}</small>` : "";
       return `<a class="office-card" href="/candidatos" data-route="/candidatos" data-office-jump="${deps.esc(o.office)}"><span class="office-card-label">${deps.esc(o.label)}</span><strong>${count}</strong><span>candidaturas</span>${err}</a>`;
@@ -107,7 +95,7 @@ window.CivicaOverview = (() => {
       <ul class="overview-sources-list">
         <li><a href="https://dadosabertos.tse.jus.br/dataset/candidatos-2026" target="_blank" rel="noopener">Candidatos 2026 (dados abertos) ↗</a></li>
         <li><a href="https://dadosabertos.tse.jus.br/dataset/eleitorado-2026" target="_blank" rel="noopener">Eleitorado por local de votação 2026 ↗</a></li>
-        <li>Simulação de votos e base privada de pessoas ficam somente no navegador; não são enviadas ao TSE.</li>
+        <li>A base privada de pessoas permanece somente no navegador e não é enviada ao TSE.</li>
       </ul>`;
   }
 

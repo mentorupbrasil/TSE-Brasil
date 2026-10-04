@@ -7,17 +7,13 @@
 
 ## Rotas
 
-- `/` — visão geral
+- `/` — início
 - `/candidatos`
-- `/partidos`
 - `/zonas`
-- `/bairros`
 - `/municipios`
 - `/base` — base privada no navegador
-- `/lancamentos` — lançamentos manuais
-- `/fontes`
 
-A rota antiga `/simulacao` é mantida apenas como compatibilidade e é convertida para `/lancamentos` no navegador.
+Rotas antigas (`/partidos`, `/bairros`, `/fontes`, `/lancamentos`, `/simulacao`) abrem o início no navegador.
 
 ## Dados territoriais
 

@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0b2f56">
+  <meta name="theme-color" content="#1351b4">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <meta name="description" content="Portal independente para consulta organizada a dados públicos das Eleições 2026 no Maranhão.">
   <meta property="og:title" content="Cívica MA — Eleições 2026">
   <meta property="og:description" content="Candidaturas, partidos, municípios, zonas e seções em um portal independente de consulta a dados públicos.">
@@ -35,7 +38,6 @@
   <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
     <nav>
       <a class="nav-link" href="/" data-route="/" data-nav="overview"><span>▦</span>Início</a>
-      <a class="nav-link" href="/lancamentos" data-route="/lancamentos" data-nav="launches"><span>▣</span>Simulador de urna</a>
       <a class="nav-link" href="/candidatos" data-route="/candidatos" data-nav="candidates"><span>◉</span>Candidaturas</a>
       <a class="nav-link" href="/zonas" data-route="/zonas" data-nav="sections"><span>⌖</span>Zonas e seções</a>
       <a class="nav-link" href="/municipios" data-route="/municipios" data-nav="municipalities"><span>▤</span>Municípios</a>
@@ -43,7 +45,7 @@
     </nav>
     <div class="sidebar-meta">
       <div><b>Portal independente</b><span>Organiza dados públicos da Justiça Eleitoral. Não é site oficial do TSE ou TRE-MA.</span></div>
-      <div class="sidebar-version">v6.0</div>
+      <div class="sidebar-version">v7.0</div>
     </div>
   </aside>
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -55,32 +57,31 @@
       <div class="hero hub-hero">
         <div>
           <span class="eyebrow">MARANHÃO • ELEIÇÕES GERAIS 2026</span>
-          <h1>Centro de comando eleitoral</h1>
-          <p>Candidaturas oficiais, estrutura territorial real e simulador de urna — tudo a partir de dados abertos do TSE, organizados para consulta e demonstração local.</p>
+          <h1>Consulta eleitoral — Maranhão 2026</h1>
+          <p>Candidaturas, zonas, seções e eleitorado organizados a partir dos dados abertos publicados pelo Tribunal Superior Eleitoral.</p>
         </div>
         <div class="hero-actions">
-          <a class="btn primary" href="/lancamentos" data-route="/lancamentos">Abrir simulador</a>
-          <button class="btn secondary" id="refreshAll">Atualizar painel</button>
+          <button class="btn primary" id="refreshAll">Atualizar painel</button>
+          <a class="btn secondary" href="https://www.tse.jus.br/" target="_blank" rel="noopener">Site oficial TSE ↗</a>
         </div>
       </div>
 
       <div id="overviewHealthStrip" class="overview-health-strip"></div>
 
-      <div class="metrics six" id="overviewMetrics">
+      <div class="metrics five" id="overviewMetrics">
         <article><span>Candidaturas MA/BR</span><strong id="metricCandidates">—</strong><small>soma dos cargos</small></article>
         <article><span>Municípios</span><strong id="metricMunicipalities">—</strong><small>com seções publicadas</small></article>
         <article><span>Seções eleitorais</span><strong id="metricSections">—</strong><small>arquivo TSE 2026</small></article>
         <article><span>Zonas</span><strong id="metricZones">—</strong><small>distintas no estado</small></article>
         <article><span>Eleitorado</span><strong id="metricElectors">—</strong><small>agregado por seção</small></article>
-        <article><span>Simulação local</span><strong id="metricSimVotes">0</strong><small>votos na sessão ativa</small></article>
       </div>
       <div class="data-meta" id="overviewMeta"></div>
 
       <div class="hub-quick-grid">
-        <a class="hub-quick-card" href="/lancamentos" data-route="/lancamentos"><b>Simulador de urna</b><span>Voto unitário, voto casado e programação por zona/seção</span></a>
         <a class="hub-quick-card" href="/candidatos" data-route="/candidatos"><b>Candidaturas</b><span>Fotos, números e situação de registro por cargo</span></a>
         <a class="hub-quick-card" href="/zonas" data-route="/zonas"><b>Zonas e seções</b><span>Locais de votação e eleitorado por município</span></a>
         <a class="hub-quick-card" href="/municipios" data-route="/municipios"><b>Municípios</b><span>Fichas territoriais dos 217 municípios</span></a>
+        <a class="hub-quick-card" href="/base" data-route="/base"><b>Base de pessoas</b><span>Cadastro privado criptografado no navegador</span></a>
       </div>
 
       <div class="dashboard-grid hub-dashboard">
@@ -211,139 +212,12 @@
       </div>
     </section>
 
-    <section class="page" id="page-launches" data-page="launches">
-      <div class="page-head">
-        <div><span class="eyebrow">SIMULADOR EDUCATIVO • DADOS PÚBLICOS</span><h1>Simulador de urna e apuração</h1><p>Experiência visual de votação e computação usando candidaturas, zonas e seções reais do Maranhão. Não altera, injeta ou substitui apuração oficial — apenas simula fluxo local no navegador.</p></div>
-        <div class="toolbar"><button class="btn ghost" id="simExportCsv">Exportar CSV</button><button class="btn ghost" id="simExportJson">Backup JSON</button><button class="btn ghost" id="simImportButton">Importar JSON</button><input type="file" id="simImportFile" accept="application/json,.json" hidden></div>
-      </div>
-      <div class="launch-warning sim-disclaimer"><strong>SIMULAÇÃO LOCAL</strong><span>Somente demonstração com dados abertos do TSE. O áudio imita o feedback da urna; os votos são fictícios e ficam no seu navegador.</span></div>
-
-      <div class="scenario-bar">
-        <label>Sessão de simulação<select id="simScenario"></select></label>
-        <button class="btn secondary" id="simNewScenario">Nova sessão</button>
-        <button class="btn ghost" id="simRenameScenario">Renomear</button>
-        <button class="btn ghost" id="simDuplicateScenario">Duplicar</button>
-        <button class="btn danger-ghost" id="simDeleteScenario">Excluir sessão</button>
-        <label class="sim-sound-toggle"><input type="checkbox" id="simSoundEnabled" checked> Som da urna</label>
-      </div>
-
-      <nav class="sim-tabs" aria-label="Modos do simulador">
-        <button type="button" class="sim-tab active" data-sim-tab="urna">Urna eletrônica</button>
-        <button type="button" class="sim-tab" data-sim-tab="programar">Programar lançamento</button>
-        <button type="button" class="sim-tab" data-sim-tab="apuracao">Painel ao vivo</button>
-        <button type="button" class="sim-tab" data-sim-tab="historico">Histórico e totais</button>
-      </nav>
-
-      <div class="sim-pane active" data-sim-pane="urna">
-        <div class="sim-urna-layout">
-          <div class="urna-device" id="urnaDevice" aria-label="Simulador de urna eletrônica">
-            <div class="urna-bezel">
-              <div class="urna-header"><span class="urna-brand">Justiça Eleitoral</span><span class="urna-model">Simulador Cívica MA</span></div>
-              <div class="urna-screen" id="urnaScreen">
-                <div class="urna-screen-idle" id="urnaIdle">
-                  <p class="urna-prompt">Digite o número do candidato</p>
-                  <div class="urna-display" id="urnaDisplay" aria-live="polite">—</div>
-                  <div class="urna-preview" id="urnaPreview" hidden></div>
-                </div>
-              </div>
-              <div class="urna-keypad" id="urnaKeypad"></div>
-              <div class="urna-actions">
-                <button type="button" class="urna-btn urna-cor corrige" id="urnaCorrige">CORRIGE</button>
-                <button type="button" class="urna-btn urna-branco" id="urnaBranco">BRANCO</button>
-                <button type="button" class="urna-btn urna-confirma" id="urnaConfirma">CONFIRMA</button>
-              </div>
-            </div>
-          </div>
-          <aside class="urna-side panel">
-            <div class="panel-head"><div><h2>Configuração da urna</h2><p>Cargo, território e candidatura alvo da simulação unitária.</p></div></div>
-            <div class="simulation-form urna-config-form">
-              <label>Cargo<select id="simOffice"></select></label>
-              <label>Município<select id="simMunicipality"></select></label>
-              <label>Zona<select id="simZone"><option value="">Automática (seções reais)</option></select></label>
-              <label>Seção<select id="simSection"><option value="">Automática</option></select></label>
-              <label class="span-2">Candidatura<select id="simCandidate"></select></label>
-              <label class="span-2"><input type="checkbox" id="simVotoCasadoUrna"> Voto casado (Presidente, Governador, Senador, Federal e Estadual)</label>
-              <div class="urna-casado-picks span-2" id="urnaCasadoPicks" hidden></div>
-            </div>
-            <p class="form-help">Cada confirmação registra um voto simulado na seção indicada ou sorteada entre seções reais do município, conforme eleitorado publicado pelo TSE.</p>
-          </aside>
-        </div>
-      </div>
-
-      <div class="sim-pane" data-sim-pane="programar" hidden>
-        <section class="panel">
-          <div class="panel-head"><div><h2>Programação de lançamento em lote</h2><p>Defina quantos votos simulados serão computados, de quais seções reais sairão e para quais candidaturas irão.</p></div></div>
-          <div class="simulation-form program-form">
-            <label>Município<select id="progMunicipality"></select></label>
-            <label>Zona<select id="progZone"><option value="">Todas as zonas</option></select></label>
-            <label>Seção<select id="progSection"><option value="">Todas as seções</option></select></label>
-            <label>Quantidade de votos<input id="progQuantity" type="number" min="1" max="500000" value="500" inputmode="numeric"></label>
-            <label>Velocidade<select id="progSpeed"><option value="slow">Lenta (detalhada)</option><option value="medium" selected>Moderada</option><option value="fast">Rápida</option></select></label>
-            <label>Origem dos eleitores<select id="progElectorSource"><option value="sections">Seções oficiais (ponderado por eleitorado)</option><option value="people">Base privada de pessoas (se desbloqueada)</option></select></label>
-            <label class="span-2"><input type="checkbox" id="progVotoCasado" checked> Voto casado — um eleitor simulado vota em todos os cargos selecionados abaixo</label>
-            <div class="prog-cargo-grid span-2" id="progCargoGrid"></div>
-            <div class="form-actions span-2">
-              <button type="button" class="btn primary" id="progStart">Iniciar computação simulada</button>
-              <button type="button" class="btn ghost" id="progPause" disabled>Pausar</button>
-              <button type="button" class="btn danger-ghost" id="progStop" disabled>Interromper</button>
-            </div>
-          </div>
-        </section>
-        <section class="panel prog-progress-panel" id="progProgressPanel" hidden>
-          <div class="panel-head"><div><h2>Computação em andamento</h2><p id="progStatusText">Aguardando início</p></div><strong id="progPercent">0%</strong></div>
-          <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
-          <div class="metrics four compact-prog-metrics">
-            <article><span>Processados</span><strong id="progDone">0</strong></article>
-            <article><span>Total programado</span><strong id="progTotal">0</strong></article>
-            <article><span>Seção atual</span><strong id="progCurrentSection" class="metric-word">—</strong></article>
-            <article><span>Zona atual</span><strong id="progCurrentZone" class="metric-word">—</strong></article>
-          </div>
-        </section>
-      </div>
-
-      <div class="sim-pane" data-sim-pane="apuracao" hidden>
-        <div class="sim-live-grid">
-          <section class="panel sim-flow-panel">
-            <div class="panel-head"><div><h2>Fluxo de votos simulados</h2><p>Origem territorial → candidatura destino</p></div></div>
-            <ul class="sim-flow-feed" id="simFlowFeed" aria-live="polite"></ul>
-          </section>
-          <section class="panel">
-            <div class="panel-head"><div><h2>Totais por candidatura</h2><p>Acumulado da sessão ativa</p></div><select id="simTotalsOffice" aria-label="Cargo nos totais"></select></div>
-            <div id="simLiveTotals" class="sim-live-totals"></div>
-          </section>
-        </div>
-      </div>
-
-      <div class="sim-pane" data-sim-pane="historico" hidden>
-        <div class="filter-panel compact"><label>Cargo nos resumos<select id="simHistoryOffice"></select></label></div>
-        <div class="metrics six simulation-metrics">
-          <article><span>Votos simulados</span><strong id="simMetricTotal">0</strong><small>cargo selecionado</small></article>
-          <article><span>Nominais</span><strong id="simMetricNominal">0</strong></article>
-          <article><span>Legenda</span><strong id="simMetricLegend">0</strong></article>
-          <article><span>Municípios</span><strong id="simMetricMunicipalities">0</strong></article>
-          <article><span>Candidaturas</span><strong id="simMetricCandidates">0</strong></article>
-          <article><span>Seções distintas</span><strong id="simMetricSections">0</strong></article>
-        </div>
-        <div class="simulation-summary-grid">
-          <section class="panel"><div class="panel-head"><div><h2>Por município</h2></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Município</th><th>Votos</th><th>Seções</th></tr></thead><tbody id="simByMunicipality"></tbody></table></div></section>
-          <section class="panel"><div class="panel-head"><div><h2>Por zona</h2></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Município</th><th>Zona</th><th>Votos</th><th>Seções</th></tr></thead><tbody id="simByZone"></tbody></table></div></section>
-          <section class="panel"><div class="panel-head"><div><h2>Por candidatura</h2></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Candidatura</th><th>Partido</th><th>Votos</th></tr></thead><tbody id="simByCandidate"></tbody></table></div></section>
-          <section class="panel"><div class="panel-head"><div><h2>Por seção</h2></div></div><div class="table-wrap simulation-table"><table><thead><tr><th>Município</th><th>Zona</th><th>Seção</th><th>Local</th><th>Votos</th></tr></thead><tbody id="simBySection"></tbody></table></div></section>
-        </div>
-        <section class="panel simulation-records">
-          <div class="panel-head"><div><h2>Registro detalhado</h2><p>Últimos eventos da simulação</p></div><div class="toolbar"><input id="simRecordSearch" placeholder="Filtrar"><button class="btn danger-ghost" id="simResetScenario">Limpar sessão</button></div></div>
-          <div class="table-wrap"><table><thead><tr><th>Data/hora</th><th>Município</th><th>Zona</th><th>Seção</th><th>Local</th><th>Cargo</th><th>Destino</th><th></th></tr></thead><tbody id="simLaunchesBody"></tbody></table></div>
-        </section>
-      </div>
-    </section>
-
   </main>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="/data/municipalities.js"></script>
 <script src="/data/election.js"></script>
-<script src="/assets/simulator.js"></script>
 <script src="/assets/overview.js"></script>
 <script src="/assets/app.js"></script>
 </body>

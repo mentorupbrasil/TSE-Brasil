@@ -12,12 +12,8 @@ Campos usados quando disponíveis: município, zona, seção, bairro do local, n
 
 “Bairro” significa bairro do local de votação. O portal não deduz o bairro de residência de uma pessoa a partir desse conjunto.
 
-## Lançamentos manuais
-
-A área `/lancamentos` guarda registros criados manualmente no `localStorage` do navegador. Cada novo registro vale uma unidade. Esses dados não pertencem ao TSE, não são apuração oficial e não são apresentados como previsão eleitoral.
-
 ## Base de pessoas
 
-A área `/base` é separada dos lançamentos. Ela permite nome, CPF, nascimento, bairro, município, zona, seção, liderança e dados de contato. O conteúdo é criptografado localmente com Web Crypto (PBKDF2 + AES-GCM) antes de ser salvo no navegador.
+A área `/base` permite nome, CPF, nascimento, bairro, município, zona, seção, liderança e dados de contato. O conteúdo é criptografado localmente com Web Crypto (PBKDF2 + AES-GCM) antes de ser salvo no navegador.
 
 O cadastro nominal não possui campo de candidatura, partido, voto ou preferência política.

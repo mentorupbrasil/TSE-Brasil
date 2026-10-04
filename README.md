@@ -2,14 +2,13 @@
 
 Portal independente para consulta organizada de dados públicos eleitorais do Maranhão.
 
-## V6 — principais módulos
+## V7 — principais módulos
 
-- **Início (centro de comando)**: saúde das fontes, território MA agregado, cargos, maiores eleitorados e atalhos.
+- **Início**: saúde das fontes, território MA agregado, cargos, maiores eleitorados e atalhos.
 - Candidaturas por cargo, partido e situação, com busca e exportação.
 - Municípios do Maranhão e zonas/seções por município.
-- **Simulador de urna** educativo: teclado, som, fotos oficiais, voto casado, programação por zona/seção real e painel ao vivo.
-- **Base de pessoas privada**, armazenada criptografada no navegador e separada dos lançamentos.
-- Status das fontes com contingência e mensagens amigáveis.
+- **Base de pessoas privada**, armazenada criptografada no navegador.
+- Identidade visual alinhada ao padrão cromático do portal TSE (gov.br).
 
 ## Fontes públicas
 
@@ -20,7 +19,7 @@ O bairro apresentado no módulo territorial é o bairro do **local de votação*
 
 ## Privacidade
 
-O repositório público não deve conter planilhas, CSVs, CPFs, datas de nascimento, contatos ou outros dados pessoais. A Base de pessoas usa criptografia AES-GCM no navegador e exige senha local. Não existe campo de candidatura, partido, voto ou preferência política dentro do cadastro nominal.
+O repositório público não deve conter planilhas, CSVs, CPFs, datas de nascimento, contatos ou outros dados pessoais. A Base de pessoas usa criptografia AES-GCM no navegador e exige senha local.
 
 Para importar cadastros, use um CSV privado com as colunas:
 

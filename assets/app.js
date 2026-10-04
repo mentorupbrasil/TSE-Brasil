@@ -16,8 +16,6 @@ const state = {
   candidateFilters: { party: "", status: "", search: "", sort: "name", page: 1, pageSize: 24 },
   sectionFilters: { zone: "", search: "", page: 1, pageSize: 50 },
   globalSearchTimer: null,
-  simulation: null,
-  simulationRecordSearch: "",
   people: [],
   peopleKey: null,
   peopleSalt: null,
@@ -93,19 +91,17 @@ function parseRoute() {
   if (path === "/") return { page: "overview" };
   if (parts[0] === "candidatos" && parts.length >= 3) return { page: "candidate-detail", office: parts[1], id: parts.slice(2).join("/") };
   if (parts[0] === "candidatos") return { page: "candidates" };
-  if (parts[0] === "partidos" || parts[0] === "bairros" || parts[0] === "fontes") return { page: "overview", legacy: true };
+  if (parts[0] === "partidos" || parts[0] === "bairros" || parts[0] === "fontes" || parts[0] === "lancamentos" || parts[0] === "simulacao") return { page: "overview", legacy: true };
   if (parts[0] === "zonas") return { page: "sections" };
   if (parts[0] === "municipios" && parts[1]) return { page: "municipality-detail", slug: parts.slice(1).join("/") };
   if (parts[0] === "municipios") return { page: "municipalities" };
   if (parts[0] === "base") return { page: "people" };
-  if (parts[0] === "lancamentos" || parts[0] === "simulacao") return { page: "launches", legacy: parts[0] === "simulacao" };
   return { page: "overview", notFound: true };
 }
 
 async function route() {
   const routeInfo = parseRoute();
-  if (routeInfo.legacy && location.pathname.includes("simulacao")) history.replaceState({}, "", "/lancamentos");
-  else if (routeInfo.legacy) history.replaceState({}, "", "/");
+  if (routeInfo.legacy) history.replaceState({}, "", "/");
   setPage(routeInfo.page);
   window.scrollTo({ top: 0, behavior: "auto" });
   try {
@@ -116,24 +112,21 @@ async function route() {
     if (routeInfo.page === "municipalities") { setBreadcrumbs([{ label: "Municípios" }]); renderMunicipalities(); }
     if (routeInfo.page === "municipality-detail") await loadMunicipalityDetail(routeInfo.slug);
     if (routeInfo.page === "people") { setBreadcrumbs([{ label: "Base de pessoas" }]); renderPeoplePage(); }
-    if (routeInfo.page === "launches") { setBreadcrumbs([{ label: "Simulador de urna" }]); await loadLaunchesPage(); }
   } catch (error) {
     toast(error.message || "Não foi possível carregar esta área.");
   }
 }
 
 function fillOfficeSelects() {
-  ["candidateOffice", "simOffice"].forEach(id => {
-    const el = $("#" + id); if (!el) return;
-    el.innerHTML = Object.entries(offices).map(([key, label]) => `<option value="${esc(key)}">${esc(label)}</option>`).join("");
-  });
-  if ($("#candidateOffice")) $("#candidateOffice").value = state.office;
-  if ($("#simOffice")) $("#simOffice").value = state.office;
+  const el = $("#candidateOffice");
+  if (!el) return;
+  el.innerHTML = Object.entries(offices).map(([key, label]) => `<option value="${esc(key)}">${esc(label)}</option>`).join("");
+  el.value = state.office;
 }
 
 function fillMunicipalitySelect() {
   const html = municipalities.map(([name, code]) => `<option value="${esc(name)}">${esc(name)} — IBGE ${esc(code)}</option>`).join("");
-  ["sectionMunicipality", "simMunicipality"].forEach(id => {
+  ["sectionMunicipality"].forEach(id => {
     const el = $("#" + id); if (!el) return; el.innerHTML = html; el.value = state.municipality;
   });
   const list = $("#municipalityNames"); if (list) list.innerHTML = municipalities.map(([name]) => `<option value="${esc(name)}"></option>`).join("");
@@ -226,8 +219,7 @@ async function loadOverview(refresh = false) {
       getCandidates,
       candidateCard,
       wireImageFallbacks,
-      renderBarChart,
-      getSimulationStore: () => loadSimulationStore()
+      renderBarChart
     });
     await CivicaOverview.render(state.summary, state.health, refresh);
   } catch (error) {
@@ -381,7 +373,7 @@ async function loadMunicipalityDetail(slug) {
   const root = $("#municipalityDetail"); root.innerHTML = `<div class="loading">Carregando ficha de ${esc(name)}…</div>`;
   try {
     const data = await getSections(name);
-    root.innerHTML = `<div class="page-head"><div><span class="eyebrow">MUNICÍPIO • IBGE ${esc(code)}</span><h1>${esc(name)}</h1><p>Ficha territorial baseada no arquivo oficial de locais de votação de 2026.</p></div><div class="toolbar"><button class="btn ghost" id="printMunicipality">Imprimir / PDF</button><button class="btn secondary" id="openMunicipalitySections">Ver zonas e seções</button><a class="btn secondary" href="/lancamentos" data-route="/lancamentos">Simular votos neste município</a></div></div>
+    root.innerHTML = `<div class="page-head"><div><span class="eyebrow">MUNICÍPIO • IBGE ${esc(code)}</span><h1>${esc(name)}</h1><p>Ficha territorial baseada no arquivo oficial de locais de votação de 2026.</p></div><div class="toolbar"><button class="btn ghost" id="printMunicipality">Imprimir / PDF</button><button class="btn secondary" id="openMunicipalitySections">Ver zonas e seções</button></div></div>
       <div class="metrics five"><article><span>Seções</span><strong>${fmt.format(data.count || 0)}</strong></article><article><span>Zonas</span><strong>${fmt.format(data.zoneCount || 0)}</strong></article><article><span>Bairros</span><strong>${fmt.format(data.neighborhoodCount || 0)}</strong></article><article><span>Locais</span><strong>${fmt.format(data.locationCount || 0)}</strong></article><article><span>Eleitores agregados</span><strong>${fmt.format(data.eleitores || 0)}</strong></article></div>
       <div class="data-meta">${dataMeta(data)}</div>
       <div class="zone-cards">${(data.zones||[]).map(z => `<div class="zone-card"><strong>Zona ${z.zona}</strong><span>${fmt.format(z.secoes)} seções · ${fmt.format(z.bairros || 0)} bairros · ${fmt.format(z.locais || 0)} locais</span></div>`).join("")}</div>
@@ -389,7 +381,6 @@ async function loadMunicipalityDetail(slug) {
       <section class="panel"><div class="panel-head"><div><h2>Locais de votação</h2><p>Primeiros locais publicados para o município.</p></div></div><div class="table-wrap"><table><thead><tr><th>Bairro</th><th>Zona</th><th>Local</th><th>Endereço</th></tr></thead><tbody>${(data.locations||[]).slice(0,30).map(x => `<tr><td>${esc(x.bairro||"—")}</td><td>${esc(x.zona||"—")}</td><td>${esc(x.nome||"—")}</td><td>${esc(x.endereco||"—")}</td></tr>`).join("")}</tbody></table></div></section></div>`;
     $("#printMunicipality").onclick = () => window.print();
     $("#openMunicipalitySections").onclick = () => { state.municipality = name; $("#sectionMunicipality").value = name; state.sectionFilters = { zone: "", search: "", page: 1, pageSize: 50 }; navigate("/zonas"); };
-    root.querySelector("[data-route='/lancamentos']")?.addEventListener("click", () => { state.municipality = name; if ($("#simMunicipality")) $("#simMunicipality").value = name; if ($("#progMunicipality")) $("#progMunicipality").value = name; });
   } catch (error) { root.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
 }
 
@@ -406,205 +397,9 @@ async function checkSources(refresh = false) {
   }
 }
 
-const LAUNCH_STORAGE_KEY = "civica-ma-lancamentos-v1";
-const LEGACY_LAUNCH_STORAGE_KEY = "civica-ma-simulacao-v1";
-
 function newId(prefix = "id") { return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`; }
-function emptyLaunchStore() {
-  const id = newId("controle");
-  return { version: 2, activeId: id, scenarios: [{ id, name: "Controle 1", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), entries: [] }] };
-}
-function loadSimulationStore() {
-  if (state.simulation) return state.simulation;
-  try {
-    const current = localStorage.getItem(LAUNCH_STORAGE_KEY);
-    const legacy = localStorage.getItem(LEGACY_LAUNCH_STORAGE_KEY);
-    const parsed = JSON.parse(current || legacy || "null");
-    if (parsed && Array.isArray(parsed.scenarios) && parsed.scenarios.length) state.simulation = parsed;
-  } catch {}
-  if (!state.simulation) state.simulation = emptyLaunchStore();
-  if (!state.simulation.scenarios.some(x => x.id === state.simulation.activeId)) state.simulation.activeId = state.simulation.scenarios[0].id;
-  saveSimulationStore();
-  return state.simulation;
-}
-function saveSimulationStore() { try { localStorage.setItem(LAUNCH_STORAGE_KEY, JSON.stringify(state.simulation || emptyLaunchStore())); } catch {} }
-function activeScenario() { const store = loadSimulationStore(); return store.scenarios.find(x => x.id === store.activeId) || store.scenarios[0]; }
-function renderScenarioSelect() { const store=loadSimulationStore(),el=$("#simScenario"); if(!el)return; el.innerHTML=store.scenarios.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join(""); el.value=store.activeId; }
-function createScenario(name) { const store=loadSimulationStore(),clean=String(name||"").trim();if(!clean)return; const x={id:newId("controle"),name:clean.slice(0,60),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),entries:[]};store.scenarios.push(x);store.activeId=x.id;saveSimulationStore();renderScenarioSelect();renderSimulation(); }
-async function populateSimulationCandidates() {
-  const office = $("#simOffice").value || state.office;
-  const candidateEl = $("#simCandidate");
-  if (!candidateEl) return;
-  candidateEl.innerHTML = `<option value="">Carregando…</option>`;
-  try {
-    const data = await getCandidates(office);
-    const candidates = [...(data.candidates || [])].sort((a, b) => String(a.name).localeCompare(String(b.name), "pt-BR"));
-    candidateEl.innerHTML = `<option value="">Selecione ou digite na urna</option>` + candidates.map(c => `<option value="${esc(c.id || c.number)}">${esc(c.name)} — ${esc(c.party)} ${esc(c.number)}</option>`).join("");
-  } catch {
-    candidateEl.innerHTML = `<option value="">Candidaturas indisponíveis</option>`;
-  }
-}
 
-async function populateLaunchGeography() {
-  const municipality = $("#simMunicipality").value || state.municipality;
-  const zoneEl = $("#simZone");
-  const sectionEl = $("#simSection");
-  if (!zoneEl || !sectionEl) return;
-  zoneEl.innerHTML = `<option value="">Automática (seções reais)</option>`;
-  sectionEl.innerHTML = `<option value="">Automática</option>`;
-  try {
-    const data = await getSections(municipality);
-    zoneEl.innerHTML += (data.zones || []).map(x => `<option value="${esc(x.zona)}">Zona ${esc(x.zona)}</option>`).join("");
-  } catch {}
-  populateLaunchSections();
-}
-function populateLaunchSections() {
-  const municipality = $("#simMunicipality").value || state.municipality;
-  const zone = $("#simZone").value;
-  const el = $("#simSection");
-  if (!el) return;
-  el.innerHTML = `<option value="">Automática</option>`;
-  const data = state.sectionData.get(municipality);
-  if (!data) return;
-  const sections = (data.sections || []).filter(x => !zone || String(x.zona) === String(zone)).sort((a, b) => Number(a.zona) - Number(b.zona) || Number(a.secao) - Number(b.secao));
-  el.innerHTML += sections.map(x => `<option value="${esc(x.secao)}" data-zone="${esc(x.zona)}">Zona ${esc(x.zona)} · Seção ${esc(x.secao)}${x.localNome ? ` · ${esc(x.localNome)}` : ""}</option>`).join("");
-}
-async function loadLaunchesPage() {
-  loadSimulationStore();
-  renderScenarioSelect();
-  if ($("#simOffice")) $("#simOffice").value = state.office;
-  if ($("#simMunicipality")) $("#simMunicipality").value = state.municipality;
-  if ($("#simHistoryOffice")) $("#simHistoryOffice").value = state.office;
-  await Promise.all([populateSimulationCandidates(), populateLaunchGeography()]);
-  populateLaunchSections();
-  renderSimulation();
-  if (window.CivicaSimulator) {
-    await CivicaSimulator.load({
-      state,
-      offices,
-      municipalities,
-      getCandidates,
-      getSections,
-      officeLabel,
-      photoMarkup,
-      wireImageFallbacks,
-      fmt,
-      esc,
-      toast,
-      newId,
-      activeScenario,
-      saveSimulationStore,
-      renderSimulation,
-      renderLiveTotals,
-      getPeople: () => (state.peopleKey ? state.people : null)
-    });
-  }
-}
-
-function entryWeight(e){const n=Number(e?.quantity);return Number.isFinite(n)&&n>0?Math.floor(n):1;}
-function aggregateSimulation(entries) {
-  const municipalitiesMap = new Map(), candidatesMap = new Map(), zonesMap = new Map(), sectionsMap = new Map();
-  for (const e of entries) {
-    const w = entryWeight(e);
-    const m = municipalitiesMap.get(e.municipality) || { municipality: e.municipality, total: 0, sections: new Set() };
-    m.total += w;
-    if (e.section) m.sections.add(`${e.zone}|${e.section}`);
-    municipalitiesMap.set(e.municipality, m);
-    if (e.type === "candidate" || e.candidateId) {
-      const key = e.candidateId || `${e.candidateName}|${e.candidateNumber}`;
-      const c = candidatesMap.get(key) || { name: e.candidateName, number: e.candidateNumber, party: e.party, total: 0 };
-      c.total += w;
-      candidatesMap.set(key, c);
-    }
-    if (e.zone) {
-      const zkey = `${e.municipality}|${e.zone}`;
-      const z = zonesMap.get(zkey) || { municipality: e.municipality, zone: e.zone, total: 0, sections: new Set() };
-      z.total += w;
-      if (e.section) z.sections.add(e.section);
-      zonesMap.set(zkey, z);
-    }
-    if (e.zone && e.section) {
-      const skey = `${e.municipality}|${e.zone}|${e.section}`;
-      const s = sectionsMap.get(skey) || { municipality: e.municipality, zone: e.zone, section: e.section, local: e.local || "", total: 0 };
-      s.total += w;
-      sectionsMap.set(skey, s);
-    }
-  }
-  return {
-    municipalities: [...municipalitiesMap.values()].sort((a, b) => a.municipality.localeCompare(b.municipality, "pt-BR")),
-    candidates: [...candidatesMap.values()].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
-    zones: [...zonesMap.values()].sort((a, b) => a.municipality.localeCompare(b.municipality, "pt-BR") || Number(a.zone) - Number(b.zone)),
-    sections: [...sectionsMap.values()].sort((a, b) => b.total - a.total || a.municipality.localeCompare(b.municipality, "pt-BR"))
-  };
-}
-function simulationEntriesForHistoryOffice() {
-  const office = $("#simHistoryOffice")?.value || $("#simOffice")?.value || state.office;
-  return (activeScenario()?.entries || []).filter(x => String(x.office) === String(office));
-}
-function renderLiveTotals() {
-  const root = $("#simLiveTotals");
-  if (!root) return;
-  const office = $("#simTotalsOffice")?.value || state.office;
-  const entries = (activeScenario()?.entries || []).filter(e => String(e.office) === String(office) && (e.type === "candidate" || e.candidateId));
-  const map = new Map();
-  for (const e of entries) {
-    const key = e.candidateId || `${e.candidateName}|${e.candidateNumber}`;
-    const item = map.get(key) || { id: e.candidateId, name: e.candidateName, number: e.candidateNumber, party: e.party, total: 0 };
-    item.total += entryWeight(e);
-    map.set(key, item);
-  }
-  const list = [...map.values()].sort((a, b) => b.total - a.total).slice(0, 12);
-  if (!list.length) { root.innerHTML = `<div class="empty">Nenhum voto simulado neste cargo.</div>`; return; }
-  getCandidates(office).then(data => {
-    root.innerHTML = list.map(x => {
-      const full = data.candidates.find(cand => String(cand.id) === String(x.id) || String(cand.number) === String(x.number) || cand.name === x.name);
-      return `<div class="sim-total-row">${photoMarkup(full || x)}<div class="sim-total-copy"><strong>${esc(x.name)}</strong><span>${esc(x.party)} · ${esc(x.number)}</span></div><div class="sim-total-count">${fmt.format(x.total)}</div></div>`;
-    }).join("");
-    wireImageFallbacks(root);
-  }).catch(() => {
-    root.innerHTML = list.map(x => `<div class="sim-total-row"><div class="sim-total-copy"><strong>${esc(x.name)}</strong></div><div class="sim-total-count">${fmt.format(x.total)}</div></div>`).join("");
-  });
-}
-function simEmptyRow(cols,text="Nenhum lançamento neste recorte."){return `<tr><td colspan="${cols}" class="sim-empty-cell">${esc(text)}</td></tr>`;}
-function renderSimulation() {
-  if (!$("#simLaunchesBody")) return;
-  renderScenarioSelect();
-  const entries = simulationEntriesForHistoryOffice();
-  const agg = aggregateSimulation(entries);
-  const sum = type => entries.filter(e => !type || e.type === type).reduce((a, e) => a + entryWeight(e), 0);
-  const sectionsUsed = new Set(entries.filter(e => e.section).map(e => `${e.municipality}|${e.zone}|${e.section}`));
-  $("#simMetricTotal").textContent = fmt.format(sum());
-  $("#simMetricNominal").textContent = fmt.format(sum("candidate"));
-  $("#simMetricLegend").textContent = fmt.format(sum("legend"));
-  $("#simMetricMunicipalities").textContent = fmt.format(agg.municipalities.length);
-  $("#simMetricCandidates").textContent = fmt.format(agg.candidates.length);
-  if ($("#simMetricSections")) $("#simMetricSections").textContent = fmt.format(sectionsUsed.size);
-  $("#simByMunicipality").innerHTML = agg.municipalities.length ? agg.municipalities.map(x => `<tr><td>${esc(x.municipality)}</td><td>${fmt.format(x.total)}</td><td>${fmt.format(x.sections.size)}</td></tr>`).join("") : simEmptyRow(3);
-  $("#simByCandidate").innerHTML = agg.candidates.length ? agg.candidates.map(x => `<tr><td><b>${esc(x.name)}</b>${x.number ? ` <span class="sim-sub">${esc(x.number)}</span>` : ""}</td><td>${esc(x.party || "—")}</td><td>${fmt.format(x.total)}</td></tr>`).join("") : simEmptyRow(3);
-  $("#simByZone").innerHTML = agg.zones.length ? agg.zones.map(x => `<tr><td>${esc(x.municipality)}</td><td>${esc(x.zone)}</td><td>${fmt.format(x.total)}</td><td>${fmt.format(x.sections.size)}</td></tr>`).join("") : simEmptyRow(4, "Nenhum voto com zona informada.");
-  if ($("#simBySection")) $("#simBySection").innerHTML = agg.sections.length ? agg.sections.slice(0, 200).map(x => `<tr><td>${esc(x.municipality)}</td><td>${esc(x.zone)}</td><td>${esc(x.section)}</td><td>${esc(x.local || "—")}</td><td>${fmt.format(x.total)}</td></tr>`).join("") : simEmptyRow(5);
-  const q = normalize(state.simulationRecordSearch);
-  const visible = entries.filter(e => !q || normalize(`${e.municipality} ${e.zone} ${e.section} ${e.candidateName} ${e.local} ${e.officeLabel}`).includes(q)).slice().sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 500);
-  $("#simLaunchesBody").innerHTML = visible.length ? visible.map(e => {
-    const target = e.candidateName ? `${e.candidateName}${e.candidateNumber ? ` (${e.candidateNumber})` : ""}` : e.party || "—";
-    return `<tr><td>${esc(formatDate(e.at))}</td><td>${esc(e.municipality)}</td><td>${esc(e.zone || "—")}</td><td>${esc(e.section || "—")}</td><td>${esc(e.local || e.neighborhood || "—")}</td><td>${esc(e.officeLabel || officeLabel(e.office))}</td><td>${esc(target)}</td><td><button class="sim-delete" type="button" data-sim-delete="${esc(e.id)}" aria-label="Excluir">×</button></td></tr>`;
-  }).join("") : simEmptyRow(8);
-  $$("[data-sim-delete]").forEach(btn => btn.onclick = () => {
-    const scenario = activeScenario();
-    scenario.entries = scenario.entries.filter(e => e.id !== btn.dataset.simDelete);
-    scenario.updatedAt = new Date().toISOString();
-    saveSimulationStore();
-    renderSimulation();
-    renderLiveTotals();
-  });
-  renderLiveTotals();
-  if ($("#metricSimVotes")) $("#metricSimVotes").textContent = fmt.format((activeScenario()?.entries || []).length);
-}
-function exportSimulationCsv(){const scenario=activeScenario(),entries=scenario?.entries||[];exportCsv(`lancamentos-${slugify(scenario?.name||"controle")}.csv`,["Data/hora","Cargo","Município","Bairro","Zona","Seção","Tipo","Candidatura","Número","Partido","Observação"],entries.map(e=>[e.at,e.officeLabel||officeLabel(e.office),e.municipality,e.neighborhood||"",e.zone,e.section,e.type,e.candidateName,e.candidateNumber,e.party,e.note]));}
-function exportSimulationJson(){const scenario=activeScenario();downloadFile(`lancamentos-${slugify(scenario?.name||"controle")}.json`,JSON.stringify({app:"Cívica MA",kind:"manual-launches",exportedAt:new Date().toISOString(),scenario},null,2),"application/json;charset=utf-8");}
-function importSimulationJson(file){const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result),scenario=data?.scenario||data;if(!scenario||!Array.isArray(scenario.entries))throw new Error("Arquivo inválido");const imported={id:newId("controle"),name:`${String(scenario.name||"Controle importado").slice(0,50)} (importado)`,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),entries:scenario.entries.filter(e=>e&&e.municipality).map(e=>({...e,id:newId("lanc"),quantity:entryWeight(e),neighborhood:e.neighborhood||""}))};const store=loadSimulationStore();store.scenarios.push(imported);store.activeId=imported.id;saveSimulationStore();renderScenarioSelect();renderSimulation();toast("Controle importado.");}catch{toast("Não foi possível importar este arquivo.");}};reader.readAsText(file);}
-
-// Base de pessoas: cofre local criptografado, deliberadamente separado dos lançamentos.
+// Base de pessoas: cofre local criptografado no navegador.
 const PEOPLE_STORAGE_KEY="civica-ma-pessoas-cofre-v1";
 function bytesToB64(bytes){let s="";for(const b of bytes)s+=String.fromCharCode(b);return btoa(s);}
 function b64ToBytes(s){const raw=atob(s);return Uint8Array.from(raw,c=>c.charCodeAt(0));}
@@ -693,18 +488,6 @@ function bindEvents() {
 
   $("#vaultUnlock").onclick=unlockPeople;$("#vaultPassword").onkeydown=e=>{if(e.key==="Enter")unlockPeople();};$("#vaultLock").onclick=lockPeople;$("#personSave").onclick=savePerson;$("#personCancel").onclick=clearPersonForm;$("#peopleSearch").oninput=e=>{state.peopleSearch=e.target.value;renderPeople();};$("#peopleImportCsv").onchange=e=>{const f=e.target.files?.[0];if(f)importPeopleCsv(f);e.target.value="";};$("#peopleExportCsv").onclick=exportPeopleCsv;$("#peopleBackup").onclick=backupPeople;$("#peopleRestoreFile").onchange=e=>{const f=e.target.files?.[0];if(f)restorePeopleVault(f);e.target.value="";};
 
-  $("#simScenario").onchange = e => { const store=loadSimulationStore();store.activeId=e.target.value;saveSimulationStore();renderSimulation(); };
-  $("#simNewScenario").onclick = () => { const name=prompt("Nome do novo controle:",`Controle ${loadSimulationStore().scenarios.length+1}`);if(name)createScenario(name); };
-  $("#simRenameScenario").onclick = () => { const x=activeScenario(),name=prompt("Novo nome do controle:",x.name);if(name?.trim()){x.name=name.trim().slice(0,60);x.updatedAt=new Date().toISOString();saveSimulationStore();renderScenarioSelect();} };
-  $("#simDuplicateScenario").onclick = () => { const source=activeScenario(),store=loadSimulationStore(),copy={...source,id:newId("controle"),name:`${source.name} — cópia`,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),entries:source.entries.map(e=>({...e,id:newId("lanc")}))};store.scenarios.push(copy);store.activeId=copy.id;saveSimulationStore();renderScenarioSelect();renderSimulation(); };
-  $("#simDeleteScenario").onclick = () => { const store=loadSimulationStore();if(store.scenarios.length<=1)return toast("Mantenha pelo menos um controle.");const x=activeScenario();if(confirm(`Excluir o controle “${x.name}”?`)){store.scenarios=store.scenarios.filter(s=>s.id!==x.id);store.activeId=store.scenarios[0].id;saveSimulationStore();renderScenarioSelect();renderSimulation();} };
-  $("#simOffice").onchange = async e => { state.office = e.target.value; await populateSimulationCandidates(); renderSimulation(); };
-  $("#simMunicipality").onchange = async e => { state.municipality = e.target.value; await populateLaunchGeography(); };
-  $("#simZone").onchange = populateLaunchSections;
-  $("#simHistoryOffice").onchange = () => renderSimulation();
-  $("#simRecordSearch").oninput = e => { state.simulationRecordSearch = e.target.value; renderSimulation(); };
-  $("#simResetScenario").onclick = () => { const x=activeScenario();if(confirm(`Apagar todos os lançamentos de “${x.name}”?`)){x.entries=[];x.updatedAt=new Date().toISOString();saveSimulationStore();renderSimulation();} };
-  $("#simExportCsv").onclick=exportSimulationCsv;$("#simExportJson").onclick=exportSimulationJson;$("#simImportButton").onclick=()=>$("#simImportFile").click();$("#simImportFile").onchange=e=>{const f=e.target.files?.[0];if(f)importSimulationJson(f);e.target.value="";};
   $("#globalSearch").oninput = e => { clearTimeout(state.globalSearchTimer);state.globalSearchTimer=setTimeout(()=>globalSearch(e.target.value),320); };
   $("#globalSearch").onfocus = e => { if(e.target.value.trim().length>=2)globalSearch(e.target.value); };
 }
@@ -715,7 +498,7 @@ function startClock() {
 }
 
 async function init() {
-  loadSimulationStore(); fillOfficeSelects(); fillMunicipalitySelect(); bindEvents(); startClock();
+  fillOfficeSelects(); fillMunicipalitySelect(); bindEvents(); startClock();
   checkSources(); route();
 }
 
