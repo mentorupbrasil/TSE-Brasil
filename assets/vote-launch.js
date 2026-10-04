@@ -479,9 +479,13 @@ window.CivicaVoteLaunch = (() => {
           </div>
           <div class="vl-tree-area vl-tree-area--flow">
             <div class="vl-flow">
-              <div class="vl-flow-hub" id="vlHub" aria-label="Início do fluxo">
-                <span class="vl-hub-title">Início</span>
-              </div>
+              <article class="vl-flow-hub" id="vlHub" aria-label="Central de registro">
+                <header class="vl-office-label vl-hub-label">Central de registro</header>
+                <div class="vl-hub-body">
+                  <p class="vl-hub-lead">Ponto inicial do fluxo</p>
+                  <p class="vl-hub-detail">Encaminhamento sequencial da chapa</p>
+                </div>
+              </article>
               <div class="vl-flow-connector" aria-hidden="true"></div>
               <div class="vl-flow-track" id="vlBranches"></div>
             </div>
