@@ -18,11 +18,6 @@
   margin-bottom: 1rem;
 }
 
-.page-vote-launch .vl-sidebar-toggle {
-  flex-shrink: 0;
-  align-self: flex-start;
-}
-
 .page-vote-launch .vl-panel-block {
   background: #fff;
   border: 1px solid var(--vl-line);

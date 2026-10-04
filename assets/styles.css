@@ -34,3 +34,10 @@ select,input{min-height:40px;border:1px solid #d4dee9;border-radius:9px;backgrou
   body.sidebar-docked-hidden .sidebar{transform:translateX(-102%)}
   body.sidebar-docked-hidden main{margin-left:0;max-width:1800px}
 }
+.sidebar-dock-btn{display:none}
+@media(min-width:961px){
+  .sidebar-dock-btn{display:grid;place-items:center;position:absolute;top:10px;right:8px;z-index:2;width:26px;height:26px;padding:0;border:1px solid rgba(255,255,255,.22);border-radius:4px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);font-size:14px;line-height:1;cursor:pointer}
+  .sidebar-dock-btn:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.35)}
+  .sidebar-reveal-btn{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:45;width:22px;height:52px;padding:0;border:1px solid var(--line);border-left:none;border-radius:0 4px 4px 0;background:#fff;color:var(--brand);font-size:13px;line-height:1;cursor:pointer;box-shadow:var(--shadow)}
+  .sidebar-reveal-btn:hover{background:var(--brand-3);border-color:#91b7dc}
+}

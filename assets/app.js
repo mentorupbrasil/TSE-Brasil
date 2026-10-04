@@ -188,9 +188,7 @@ async function route() {
           esc,
           officeLabel,
           toast,
-          wireImageFallbacks,
-          toggleSidebarDock,
-          isSidebarDockHidden
+          wireImageFallbacks
         });
       }
     } else {
@@ -703,17 +701,20 @@ function closeSidebar() { $("#sidebar").classList.remove("open"); $("#sidebarBac
 
 const SIDEBAR_DOCK_CLASS = "sidebar-docked-hidden";
 
+function syncSidebarDockUi() {
+  const hidden = document.body.classList.contains(SIDEBAR_DOCK_CLASS);
+  const reveal = $("#sidebarRevealBtn");
+  if (reveal) reveal.hidden = !hidden;
+}
+
 function setSidebarDockHidden(hidden) {
   document.body.classList.toggle(SIDEBAR_DOCK_CLASS, hidden);
+  syncSidebarDockUi();
   return hidden;
 }
 
 function toggleSidebarDock() {
   return setSidebarDockHidden(!document.body.classList.contains(SIDEBAR_DOCK_CLASS));
-}
-
-function isSidebarDockHidden() {
-  return document.body.classList.contains(SIDEBAR_DOCK_CLASS);
 }
 
 function bindEvents() {
@@ -725,6 +726,9 @@ function bindEvents() {
   window.addEventListener("popstate", route);
   $("#menuBtn").onclick = () => $("#sidebar").classList.contains("open") ? closeSidebar() : openSidebar();
   $("#sidebarBackdrop").onclick = closeSidebar;
+  $("#sidebarCollapseBtn")?.addEventListener("click", () => setSidebarDockHidden(true));
+  $("#sidebarRevealBtn")?.addEventListener("click", () => setSidebarDockHidden(false));
+  syncSidebarDockUi();
   $("#candidateOffice").onchange = async e => {
     state.office = e.target.value;
     if ($("#overviewOffice")) $("#overviewOffice").value = state.office;

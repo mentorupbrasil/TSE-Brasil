@@ -373,14 +373,6 @@ window.CivicaVoteLaunch = (() => {
       if (out) out.innerHTML = "";
       log("Registro limpo.", "dim");
     });
-    document.getElementById("vlToggleSidebar")?.addEventListener("click", () => {
-      const btn = document.getElementById("vlToggleSidebar");
-      const hidden = deps.toggleSidebarDock?.() ?? false;
-      if (btn) {
-        btn.textContent = hidden ? "Exibir menu lateral" : "Recolher menu lateral";
-        btn.setAttribute("aria-expanded", hidden ? "false" : "true");
-      }
-    });
     document.getElementById("vlToggleLog")?.addEventListener("click", () => {
       const log = document.getElementById("vlLogPanel");
       const btn = document.getElementById("vlToggleLog");
@@ -403,7 +395,6 @@ window.CivicaVoteLaunch = (() => {
             <h1>Tramitação de votos</h1>
             <p>Registro sequencial do voto casado conforme a ordem legal de apuração entre os cargos.</p>
           </div>
-          <button type="button" class="btn btn-tse btn-tse-ghost vl-sidebar-toggle" id="vlToggleSidebar" aria-expanded="true">Recolher menu lateral</button>
         </div>
       </header>
       <section class="vl-chapa-panel vl-panel-block" id="vlChapaPanel">
@@ -468,11 +459,6 @@ window.CivicaVoteLaunch = (() => {
     deps = options;
     renderShell();
     bindCargoEvents();
-    const sidebarBtn = document.getElementById("vlToggleSidebar");
-    if (sidebarBtn && deps.isSidebarDockHidden?.()) {
-      sidebarBtn.textContent = "Exibir menu lateral";
-      sidebarBtn.setAttribute("aria-expanded", "false");
-    }
     renderTree();
     log("Aguardando configuração da chapa.", "dim");
     setStat("vlStatVotes", "0");
