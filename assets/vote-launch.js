@@ -40,12 +40,31 @@ window.CivicaVoteLaunch = (() => {
     return deps.officeLabel ? deps.officeLabel(id) : id;
   }
 
-  function log(line, cls = "ok") {
-    const out = document.getElementById("vlTerminalOut");
-    if (!out) return;
+  const LOG_TAGS = { sys: "Sistema", run: "Tramitação", reg: "Registro", warn: "Alerta" };
+
+  function setLogLive(title, detail = "") {
+    const t = document.getElementById("vlLogLiveTitle");
+    const d = document.getElementById("vlLogLiveDetail");
+    if (t) t.textContent = title;
+    if (d) d.textContent = detail;
+  }
+
+  function clearLogHistory() {
+    const hist = document.getElementById("vlLogHistory");
+    if (hist) hist.innerHTML = "";
+  }
+
+  function logEntry(kind, message, detail = "") {
+    const hist = document.getElementById("vlLogHistory");
+    if (!hist) return;
     const ts = new Date().toLocaleTimeString("pt-BR", { hour12: false });
-    out.insertAdjacentHTML("beforeend", `<div class="${cls}"><span class="dim">[${ts}]</span> ${line}</div>`);
-    out.scrollTop = out.scrollHeight;
+    const tag = LOG_TAGS[kind] || LOG_TAGS.sys;
+    hist.insertAdjacentHTML("beforeend", `<article class="vl-log-entry" data-kind="${esc(kind)}">
+      <div class="vl-log-entry-head"><time datetime="">${esc(ts)}</time><span class="vl-log-tag">${esc(tag)}</span></div>
+      <p class="vl-log-msg">${esc(message)}</p>${detail ? `<p class="vl-log-detail">${esc(detail)}</p>` : ""}
+    </article>`);
+    while (hist.children.length > 80) hist.firstElementChild?.remove();
+    hist.scrollTop = hist.scrollHeight;
   }
 
   function setStat(id, value) {
@@ -237,12 +256,10 @@ window.CivicaVoteLaunch = (() => {
 
   async function loadCatalog(office) {
     if (catalog.has(office)) return;
-    log(`Carregando candidatos: ${officeLabel(office)}…`, "info");
     const data = await deps.getCandidates(office);
     const list = (data.candidates || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name), "pt-BR"));
     catalog.set(office, list);
     populateSelect(office);
-    log(`${list.length} candidaturas disponíveis (${officeLabel(office)}).`, "dim");
   }
 
   async function loadAllCatalogs() {
@@ -356,7 +373,7 @@ window.CivicaVoteLaunch = (() => {
       await loadUrnaSounds();
     } catch (e) {
       deps.toast?.("Não foi possível carregar o áudio da urna.");
-      log(`ERR :: áudio — ${esc(e.message)}`, "warn");
+      logEntry("warn", "Áudio de confirmação indisponível", e.message);
       return;
     }
     runTramitation();
@@ -375,7 +392,9 @@ window.CivicaVoteLaunch = (() => {
     refreshProcessState();
     renderTree();
     resetNodeVisuals();
-    log(`Processamento iniciado · lote de ${cycles.toLocaleString("pt-BR")} votos.`, "info");
+    clearLogHistory();
+    logEntry("run", "Tramitação iniciada", `Lote de ${cycles.toLocaleString("pt-BR")} votos · ${chain.length} cargo(s) por chapa`);
+    setLogLive("Tramitação em andamento", "Aguardando primeiro registro…");
     setStat("vlStatEta", formatEta(Date.now() + activeVoteDurationMs * cycles));
     let totalSteps = chain.length * cycles;
     let doneSteps = 0;
@@ -393,6 +412,10 @@ window.CivicaVoteLaunch = (() => {
         if (bar) bar.style.width = "0%";
         branch?.classList.remove("done");
         branch?.classList.add("active");
+        setLogLive(
+          `Voto ${cycle.toLocaleString("pt-BR")} de ${cycles.toLocaleString("pt-BR")}`,
+          `${officeLabel(item.office)} · nº ${c?.number ?? "—"} · ${esc(c?.name || "—")}`
+        );
         hub?.classList.add("active");
         await animatePacket(hub, branch?.querySelector(".vl-cand-card") || branch, timing);
         hub?.classList.remove("active");
@@ -410,9 +433,18 @@ window.CivicaVoteLaunch = (() => {
       completedVotes = cycle;
       updateBatchProgress(completedVotes, totalSteps, doneSteps);
       const hash = fakeHash(voteSeed);
-      if (cycle === 1 || cycle % 25 === 0 || cycle === cycles) {
-        log(`Voto ${cycle.toLocaleString("pt-BR")} de ${cycles.toLocaleString("pt-BR")} · protocolo ${hash}`, "ok");
+      const logVote = cycle <= 2 || cycle % 100 === 0 || cycle === cycles;
+      if (logVote) {
+        logEntry(
+          "reg",
+          `Voto ${cycle.toLocaleString("pt-BR")} registrado`,
+          `Protocolo ${hash} · ${chain.map(x => officeLabel(x.office)).join(" → ")}`
+        );
       }
+      setLogLive(
+        `Voto ${cycle.toLocaleString("pt-BR")} de ${cycles.toLocaleString("pt-BR")} concluído`,
+        "Intervalo antes do próximo registro"
+      );
       if (cycle < cycles && !abort) {
         VOTE_CHAIN.forEach(x => {
           document.getElementById(`vlBranch${x.office}`)?.classList.remove("done", "active");
@@ -420,10 +452,13 @@ window.CivicaVoteLaunch = (() => {
         await sleep(timing.betweenVotesMs);
       }
     }
-    if (abort) log("Processamento suspenso.", "warn");
-    else {
+    if (abort) {
+      logEntry("warn", "Tramitação suspensa pelo operador", `${completedVotes.toLocaleString("pt-BR")} voto(s) registrado(s) até a interrupção`);
+      setLogLive("Tramitação suspensa", "Use Iniciar tramitação para retomar o lote");
+    } else {
       setStat("vlStatEta", formatEta(Date.now()));
-      log(`Processamento concluído · ${completedVotes.toLocaleString("pt-BR")} votos tramitados.`, "info");
+      logEntry("run", "Tramitação concluída", `${completedVotes.toLocaleString("pt-BR")} votos registrados no lote`);
+      setLogLive("Tramitação concluída", "Lote finalizado com sucesso");
     }
     hub?.classList.remove("active");
     running = false;
@@ -458,9 +493,9 @@ window.CivicaVoteLaunch = (() => {
       btn.addEventListener("click", stopTramitation);
     });
     document.getElementById("vlClearLog")?.addEventListener("click", () => {
-      const out = document.getElementById("vlTerminalOut");
-      if (out) out.innerHTML = "";
-      log("Registro limpo.", "dim");
+      clearLogHistory();
+      setLogLive("Histórico limpo", "Eventos anteriores removidos da visualização");
+      logEntry("sys", "Histórico reiniciado");
     });
     document.getElementById("vlToggleLog")?.addEventListener("click", () => {
       const log = document.getElementById("vlLogPanel");
@@ -545,15 +580,20 @@ window.CivicaVoteLaunch = (() => {
         </section>
         <aside class="vl-panel-block vl-log-panel" id="vlLogPanel">
           <div class="tse-panel-head">
-            <h2>Registro</h2>
+            <h2>Histórico</h2>
           </div>
           <div class="vl-log-body">
-            <div class="vl-terminal-out" id="vlTerminalOut" aria-live="polite"></div>
+            <div class="vl-log-live" id="vlLogLive" aria-live="polite" aria-atomic="true">
+              <span class="vl-log-live-label">Situação atual</span>
+              <strong id="vlLogLiveTitle">Aguardando início</strong>
+              <span id="vlLogLiveDetail">Configure a chapa e inicie a tramitação.</span>
+            </div>
+            <div class="vl-log-history" id="vlLogHistory" aria-label="Eventos registrados"></div>
             <div class="vl-stats vl-stats--batch">
               <div>Votos tramitados<b><span id="vlStatVotes">0</span> / 3.000</b></div>
               <div>Previsão de término<b id="vlStatEta">—</b></div>
             </div>
-            <button type="button" class="btn btn-tse btn-tse-ghost vl-log-clear" id="vlClearLog">Limpar registro</button>
+            <button type="button" class="btn btn-tse btn-tse-ghost vl-log-clear" id="vlClearLog">Limpar histórico</button>
           </div>
         </aside>
       </div>
@@ -566,18 +606,19 @@ window.CivicaVoteLaunch = (() => {
     bindCargoEvents();
     renderTree();
     refreshProcessState();
-    log("Aguardando configuração da chapa.", "dim");
+    setLogLive("Aguardando configuração", "Selecione os candidatos da chapa eleitoral");
     setStat("vlStatVotes", "0");
     setStat("vlStatEta", "—");
     try {
       await loadAllCatalogs();
       renderTree();
-      log("Candidaturas sincronizadas.", "info");
+      const total = VOTE_CHAIN.reduce((n, x) => n + (catalog.get(x.office)?.length || 0), 0);
+      logEntry("sys", "Base de candidaturas sincronizada", `${VOTE_CHAIN.length} cargos · ${total.toLocaleString("pt-BR")} candidaturas`);
       loadUrnaSounds().then(() => {
         updateBatchMetaLabel(enabledChain().length || DEFAULT_ON.size);
-      }).catch(() => log("Módulo de confirmação indisponível.", "warn"));
+      }).catch(() => logEntry("warn", "Áudio de confirmação indisponível"));
     } catch (e) {
-      log(`ERR :: ${esc(e.message)}`, "warn");
+      logEntry("warn", "Falha ao carregar candidaturas", e.message);
       deps.toast?.(e.message || "Falha ao carregar candidatos.");
     }
   }

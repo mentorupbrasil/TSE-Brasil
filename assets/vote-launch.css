@@ -644,33 +644,113 @@
   width: calc(100% - 1.7rem);
 }
 
-.page-vote-launch .vl-terminal-out {
-  flex: 1;
-  overflow: auto;
-  padding: 0.75rem 0.85rem;
-  font-family: "Consolas", "Courier New", ui-monospace, monospace;
-  font-size: 0.6875rem;
-  line-height: 1.55;
-  background: #f8f9fa;
-  color: #334155;
-  border-top: 1px solid var(--vl-line);
-  min-height: 200px;
+.page-vote-launch .vl-log-live {
+  padding: 0.85rem 1rem;
+  background: var(--vl-blue-light);
+  border-bottom: 1px solid #c5d4eb;
 }
 
-.page-vote-launch .vl-terminal-out .dim {
+.page-vote-launch .vl-log-live-label {
+  display: block;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vl-blue);
+  margin-bottom: 0.35rem;
+}
+
+.page-vote-launch .vl-log-live strong {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--vl-blue-dark);
+  line-height: 1.35;
+  margin-bottom: 0.25rem;
+}
+
+.page-vote-launch .vl-log-live span:last-child {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--vl-muted);
+}
+
+.page-vote-launch .vl-log-history {
+  flex: 1;
+  overflow: auto;
+  padding: 0.65rem 0.75rem 0.75rem;
+  background: #fff;
+  min-height: 180px;
+  max-height: 42vh;
+}
+
+.page-vote-launch .vl-log-entry {
+  padding: 0.55rem 0 0.65rem;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.page-vote-launch .vl-log-entry:last-child {
+  border-bottom: none;
+}
+
+.page-vote-launch .vl-log-entry-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.page-vote-launch .vl-log-entry time {
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
   color: #94a3b8;
 }
 
-.page-vote-launch .vl-terminal-out .ok {
-  color: #166534;
+.page-vote-launch .vl-log-tag {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid #d4dee9;
+  background: #f8f9fa;
+  color: var(--vl-muted);
 }
 
-.page-vote-launch .vl-terminal-out .warn {
+.page-vote-launch .vl-log-entry[data-kind="run"] .vl-log-tag {
+  border-color: #c5d4eb;
+  background: #eef4fb;
+  color: var(--vl-blue);
+}
+
+.page-vote-launch .vl-log-entry[data-kind="reg"] .vl-log-tag {
+  border-color: #bfe3d0;
+  background: #f6fcf9;
+  color: #1e6b45;
+}
+
+.page-vote-launch .vl-log-entry[data-kind="warn"] .vl-log-tag {
+  border-color: #efd8ac;
+  background: #fffaf0;
   color: #a66a12;
 }
 
-.page-vote-launch .vl-terminal-out .info {
-  color: var(--vl-blue);
+.page-vote-launch .vl-log-msg {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--vl-blue-dark);
+}
+
+.page-vote-launch .vl-log-detail {
+  margin: 0.2rem 0 0;
+  font-size: 0.6875rem;
+  line-height: 1.45;
+  color: var(--vl-muted);
+  word-break: break-word;
 }
 
 .page-vote-launch .vl-stats {
