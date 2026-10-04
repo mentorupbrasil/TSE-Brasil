@@ -185,12 +185,7 @@ window.CivicaVoteLaunch = (() => {
   function populateSelect(office) {
     const sel = document.getElementById(`vlSelect${office}`);
     if (!sel) return;
-    const q = normalize(document.getElementById(`vlSearch${office}`)?.value || "");
-    const list = (catalog.get(office) || []).filter(c => {
-      if (!q) return true;
-      const hay = `${c.name} ${c.fullName} ${c.number} ${c.party}`.toLowerCase();
-      return hay.includes(q);
-    }).slice(0, 400);
+    const list = (catalog.get(office) || []).slice(0, 400);
     const cur = selection.get(office) || "";
     sel.innerHTML = `<option value="">— Candidato —</option>` + list.map(c =>
       `<option value="${esc(c.id)}">${esc(c.number)} · ${esc(c.name)} (${esc(c.party || "?")})</option>`
@@ -200,10 +195,6 @@ window.CivicaVoteLaunch = (() => {
       sel.value = list[0].id;
       selection.set(office, String(list[0].id));
     }
-  }
-
-  function normalize(s = "") {
-    return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
   async function loadCatalog(office) {
@@ -361,7 +352,6 @@ window.CivicaVoteLaunch = (() => {
         selection.set(item.office, e.target.value);
         renderTree();
       });
-      document.getElementById(`vlSearch${item.office}`)?.addEventListener("input", () => populateSelect(item.office));
     });
     document.getElementById("vlStart")?.addEventListener("click", async () => {
       ensureAudio();
@@ -422,8 +412,7 @@ window.CivicaVoteLaunch = (() => {
           <div class="vl-chapa-row">
             ${VOTE_CHAIN.map(item => `<div class="vl-chapa-cell ${DEFAULT_ON.has(item.office) ? "on" : ""}" id="vlCargoBox${esc(item.office)}">
               <label class="vl-chapa-check"><input type="checkbox" id="vlCargo${esc(item.office)}" ${DEFAULT_ON.has(item.office) ? "checked" : ""}><span>${esc(item.short)}</span><span class="vl-chapa-full">${esc(item.label)}</span></label>
-              <input type="search" class="vl-chapa-search" id="vlSearch${esc(item.office)}" placeholder="Buscar" autocomplete="off" title="Filtrar ${esc(item.label)}">
-              <select class="vl-chapa-select" id="vlSelect${esc(item.office)}" aria-label="Candidato ${esc(item.label)}"><option value="">Candidato…</option></select>
+              <select class="vl-chapa-select" id="vlSelect${esc(item.office)}" aria-label="Candidato ${esc(item.label)}"><option value="">— Candidato —</option></select>
             </div>`).join("")}
           </div>
           <div class="vl-chapa-toolbar">

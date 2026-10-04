@@ -122,7 +122,6 @@
   }
 }
 
-.page-vote-launch .vl-chapa-search,
 .page-vote-launch .vl-chapa-select {
   width: 100%;
   min-height: 2rem;
@@ -133,14 +132,8 @@
   font-family: inherit;
   background: #fff;
   color: var(--ink, #333);
-  margin-bottom: 0.35rem;
 }
 
-.page-vote-launch .vl-chapa-select {
-  margin-bottom: 0;
-}
-
-.page-vote-launch .vl-chapa-search:focus,
 .page-vote-launch .vl-chapa-select:focus {
   outline: 2px solid rgba(38, 112, 232, 0.25);
   border-color: #2670e8;
