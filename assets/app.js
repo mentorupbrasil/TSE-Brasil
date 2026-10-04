@@ -131,6 +131,8 @@ async function api(path, { refresh = false } = {}) {
 
 function setPage(page) {
   $$(".page").forEach(el => el.classList.toggle("active", el.dataset.page === page));
+  $("#mainContent")?.classList.toggle("main-vote-launch", page === "vote-launch");
+  $("#breadcrumbs")?.classList.toggle("breadcrumbs-vl", page === "vote-launch");
   const navMap = { "candidate-detail": "candidates", "municipality-detail": "municipalities" };
   const activeNav = navMap[page] || page;
   $$(".nav-link").forEach(el => el.classList.toggle("active", el.dataset.nav === activeNav));
@@ -158,7 +160,8 @@ function parseRoute() {
   if (path === "/") return { page: "overview" };
   if (parts[0] === "candidatos" && parts.length >= 3) return { page: "candidate-detail", office: parts[1], id: parts.slice(2).join("/") };
   if (parts[0] === "candidatos") return { page: "candidates" };
-  if (parts[0] === "partidos" || parts[0] === "bairros" || parts[0] === "fontes" || parts[0] === "lancamentos" || parts[0] === "simulacao") return { page: "overview", legacy: true };
+  if (parts[0] === "partidos" || parts[0] === "bairros" || parts[0] === "fontes") return { page: "overview", legacy: true };
+  if (parts[0] === "lancamentos" || parts[0] === "simulacao") return { page: "vote-launch" };
   if (parts[0] === "zonas") return { page: "sections" };
   if (parts[0] === "municipios" && parts[1]) return { page: "municipality-detail", slug: parts.slice(1).join("/") };
   if (parts[0] === "municipios") return { page: "municipalities" };
@@ -179,6 +182,12 @@ async function route() {
     if (routeInfo.page === "municipalities") { setBreadcrumbs([{ label: "Municípios" }]); renderMunicipalities(); }
     if (routeInfo.page === "municipality-detail") await loadMunicipalityDetail(routeInfo.slug);
     if (routeInfo.page === "people") { setBreadcrumbs([{ label: "Base de pessoas" }]); renderPeoplePage(); }
+    if (routeInfo.page === "vote-launch") {
+      setBreadcrumbs([{ label: "Lançamento de voto (demonstração)" }]);
+      if (window.CivicaVoteLaunch) {
+        await CivicaVoteLaunch.mount({ getCandidates, esc, officeLabel, toast, wireImageFallbacks });
+      }
+    }
   } catch (error) {
     toast(error.message || "Não foi possível carregar esta área.");
   }

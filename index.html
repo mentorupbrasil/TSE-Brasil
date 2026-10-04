@@ -15,6 +15,7 @@
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/styles.css">
   <link rel="stylesheet" href="/assets/candidacies.css">
+  <link rel="stylesheet" href="/assets/vote-launch.css">
 </head>
 <body>
 <svg xmlns="http://www.w3.org/2000/svg" class="sr-only" aria-hidden="true" focusable="false">
@@ -52,11 +53,12 @@
       <a class="nav-link" href="/candidatos" data-route="/candidatos" data-nav="candidates"><span>◉</span>Candidaturas</a>
       <a class="nav-link" href="/zonas" data-route="/zonas" data-nav="sections"><span>⌖</span>Zonas e seções</a>
       <a class="nav-link" href="/municipios" data-route="/municipios" data-nav="municipalities"><span>▤</span>Municípios</a>
+      <a class="nav-link" href="/lancamentos" data-route="/lancamentos" data-nav="vote-launch"><span>⚡</span>Lançamento de voto</a>
       <a class="nav-link" href="/base" data-route="/base" data-nav="people"><span>♙</span>Base de pessoas</a>
     </nav>
     <div class="sidebar-meta">
       <div><b>Portal independente</b><span>Organiza dados públicos da Justiça Eleitoral. Não é site oficial do TSE ou TRE-MA.</span></div>
-      <div class="sidebar-version">v7.3</div>
+      <div class="sidebar-version">v7.4</div>
     </div>
   </aside>
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -162,6 +164,10 @@
       <div id="candidateDetail"></div>
     </section>
 
+    <section class="page page-vote-launch" id="page-vote-launch" data-page="vote-launch">
+      <div id="voteLaunchRoot"></div>
+    </section>
+
     <section class="page" id="page-sections" data-page="sections">
       <div class="page-head">
         <div><span class="eyebrow">ELEITORADO 2026 • MA</span><h1>Zonas e seções eleitorais</h1><p>Consulta por município a partir do arquivo oficial de locais de votação publicado pelo TSE.</p></div>
@@ -246,6 +252,7 @@
 <script src="/data/municipalities.js"></script>
 <script src="/data/election.js"></script>
 <script src="/assets/overview.js"></script>
+<script src="/assets/vote-launch.js"></script>
 <script src="/assets/app.js"></script>
 </body>
 </html>
