@@ -2,11 +2,11 @@
 
 /** Ordem de tramitação do voto casado (majoritários → proporcionais). */
 const VOTE_CHAIN = [
-  { office: "1", label: "Presidente" },
-  { office: "3", label: "Governador" },
-  { office: "5", label: "Senador" },
-  { office: "6", label: "Deputado federal" },
-  { office: "7", label: "Deputado estadual" }
+  { office: "1", label: "Presidente", short: "Pres." },
+  { office: "3", label: "Governador", short: "Gov." },
+  { office: "5", label: "Senador", short: "Sen." },
+  { office: "6", label: "Deputado federal", short: "Fed." },
+  { office: "7", label: "Deputado estadual", short: "Est." }
 ];
 
 const DEFAULT_ON = new Set(["3", "5", "6", "7"]);
@@ -16,8 +16,9 @@ window.CivicaVoteLaunch = (() => {
   let running = false;
   let abort = false;
   let audioCtx = null;
-  const urnaBuffers = { confirma: null, pilili: null };
+  const urnaBuffers = { confirma: null };
   let urnaLoadPromise = null;
+  let activeAudioSource = null;
   const catalog = new Map();
   const selection = new Map();
 
@@ -60,50 +61,33 @@ window.CivicaVoteLaunch = (() => {
     urnaLoadPromise = (async () => {
       const ctx = ensureAudio();
       urnaBuffers.confirma = await decodeSound(ctx, "/assets/sounds/confirma-urna.mp3");
-      const pililiCandidates = [
-        "/assets/sounds/pilili-urna.mp3",
-        "/assets/sounds/pilili-urna.wav",
-        "/assets/sounds/urna-pilili.wav"
-      ];
-      for (const url of pililiCandidates) {
-        try {
-          urnaBuffers.pilili = await decodeSound(ctx, url);
-          break;
-        } catch {
-          /* tenta próximo */
-        }
-      }
       return urnaBuffers;
     })();
     return urnaLoadPromise;
   }
 
-  function playUrnaSample(kind = "confirma") {
+  function playUrnaBeep() {
     const soundOn = document.getElementById("vlSound")?.checked !== false;
-    if (!soundOn) return;
-    const buffer = urnaBuffers[kind];
-    if (!buffer) return;
+    if (!soundOn || !urnaBuffers.confirma) return;
     try {
       const ctx = ensureAudio();
+      if (activeAudioSource) {
+        try { activeAudioSource.stop(); } catch { /* já encerrado */ }
+        activeAudioSource.disconnect();
+        activeAudioSource = null;
+      }
       const src = ctx.createBufferSource();
-      src.buffer = buffer;
+      src.buffer = urnaBuffers.confirma;
       const gain = ctx.createGain();
-      gain.gain.value = kind === "confirma" ? 1 : 0.9;
+      gain.gain.value = 1;
       src.connect(gain);
       gain.connect(ctx.destination);
+      src.onended = () => { if (activeAudioSource === src) activeAudioSource = null; };
+      activeAudioSource = src;
       src.start(0);
     } catch {
       /* áudio indisponível */
     }
-  }
-
-  function playUrnaBeep() {
-    playUrnaSample("confirma");
-  }
-
-  function playUrnaPilili() {
-    if (!urnaBuffers.pilili) return;
-    playUrnaSample("pilili");
   }
 
   function fakeHash(seed) {
@@ -130,7 +114,7 @@ window.CivicaVoteLaunch = (() => {
     const branches = document.getElementById("vlBranches");
     if (!branches) return;
     const chain = enabledChain();
-    branches.innerHTML = chain.map(item => {
+    branches.innerHTML = chain.map((item, idx) => {
       const c = selectedCandidate(item.office);
       const name = c?.name || c?.fullName || "— selecione —";
       const num = c?.number || "—";
@@ -139,16 +123,18 @@ window.CivicaVoteLaunch = (() => {
         ? `<img class="vl-cand-photo" src="${esc(c.photo)}" alt="" loading="lazy" data-image-fallback="${esc(initials)}">`
         : `<div class="vl-cand-photo-fallback">${esc(initials)}</div>`;
       const party = c?.party ? `<div class="vl-cand-party">${esc(c.party)}</div>` : "";
-      return `<div class="vl-branch on" data-office="${esc(item.office)}" id="vlBranch${esc(item.office)}">
-        <div class="vl-branch-connector"></div>
-        <div class="vl-office-label">${esc(officeLabel(item.office))}</div>
-        <div class="vl-cand-card">
-          ${photo}
-          <div class="vl-cand-num">${esc(num)}</div>
-          ${party}
-          <div class="vl-cand-name">${esc(name)}</div>
-          <div class="vl-node-bar"><div class="vl-node-bar-fill" id="vlBar${esc(item.office)}"></div></div>
-        </div>
+      return `<div class="vl-flow-step">
+        ${idx > 0 ? '<div class="vl-flow-arrow" aria-hidden="true"></div>' : ""}
+        <article class="vl-branch on" data-office="${esc(item.office)}" id="vlBranch${esc(item.office)}">
+          <header class="vl-office-label">${esc(officeLabel(item.office))}</header>
+          <div class="vl-cand-card">
+            ${photo}
+            <div class="vl-cand-num">${esc(num)}</div>
+            ${party}
+            <div class="vl-cand-name">${esc(name)}</div>
+            <div class="vl-node-bar"><div class="vl-node-bar-fill" id="vlBar${esc(item.office)}"></div></div>
+          </div>
+        </article>
       </div>`;
     }).join("");
     deps.wireImageFallbacks?.(branches);
@@ -287,6 +273,7 @@ window.CivicaVoteLaunch = (() => {
         const regMs = cycles > 20 ? 120 : cycles > 5 ? 220 : 420;
         await fillBar(item.office, regMs);
         playUrnaBeep();
+        await sleep(urnaBuffers.confirma?.duration ? Math.min(urnaBuffers.confirma.duration * 1000, 800) : 320);
         registered++;
         doneSteps++;
         const pct = Math.round((doneSteps / totalSteps) * 100);
@@ -299,11 +286,6 @@ window.CivicaVoteLaunch = (() => {
         branch?.classList.remove("active");
         branch?.classList.add("done");
         await sleep(cycles > 10 ? 40 : 90);
-      }
-      if (!abort) {
-        playUrnaPilili();
-        log("Encerramento do ciclo — áudio de fim de votação.", "info");
-        await sleep(cycles > 10 ? 180 : 420);
       }
     }
     if (abort) log("Tramitação interrompida pelo usuário.", "warn");
@@ -348,10 +330,6 @@ window.CivicaVoteLaunch = (() => {
       try {
         await loadUrnaSounds();
         playUrnaBeep();
-        if (urnaBuffers.pilili) {
-          await sleep(280);
-          playUrnaPilili();
-        }
       } catch (e) {
         deps.toast?.("Áudio da urna indisponível.");
       }
@@ -365,6 +343,24 @@ window.CivicaVoteLaunch = (() => {
       const out = document.getElementById("vlTerminalOut");
       if (out) out.innerHTML = "";
       log("Registro limpo.", "dim");
+    });
+    document.getElementById("vlToggleChapa")?.addEventListener("click", () => {
+      const panel = document.getElementById("vlChapaPanel");
+      const btn = document.getElementById("vlToggleChapa");
+      if (!panel || !btn) return;
+      panel.classList.toggle("is-collapsed");
+      const hidden = panel.classList.contains("is-collapsed");
+      btn.textContent = hidden ? "Mostrar chapa" : "Ocultar chapa";
+      btn.setAttribute("aria-expanded", hidden ? "false" : "true");
+    });
+    document.getElementById("vlToggleLog")?.addEventListener("click", () => {
+      const log = document.getElementById("vlLogPanel");
+      const btn = document.getElementById("vlToggleLog");
+      if (!log || !btn) return;
+      log.classList.toggle("is-collapsed");
+      const hidden = log.classList.contains("is-collapsed");
+      btn.textContent = hidden ? "Mostrar registro" : "Ocultar registro";
+      btn.setAttribute("aria-expanded", hidden ? "false" : "true");
     });
   }
 
@@ -382,60 +378,63 @@ window.CivicaVoteLaunch = (() => {
           </div>
         </div>
       </header>
-      <div class="vl-layout">
-        <aside class="vl-panel-block">
-          <div class="tse-panel-head"><h2>Configuração da chapa</h2></div>
-          <div class="vl-panel-body">
-            <div class="vl-cargo-list">
-              ${VOTE_CHAIN.map(item => `<div class="vl-cargo-item ${DEFAULT_ON.has(item.office) ? "on" : ""}" id="vlCargoBox${esc(item.office)}">
-                <div class="vl-cargo-top">
-                  <label><input type="checkbox" id="vlCargo${esc(item.office)}" ${DEFAULT_ON.has(item.office) ? "checked" : ""}> ${esc(item.label)}</label>
-                </div>
-                <div class="vl-field"><span>Buscar</span><input type="search" id="vlSearch${esc(item.office)}" placeholder="Nome ou número" autocomplete="off"></div>
-                <div class="vl-field"><span>Candidato</span><select id="vlSelect${esc(item.office)}"><option value="">Carregando…</option></select></div>
-              </div>`).join("")}
+      <section class="vl-chapa-panel vl-panel-block" id="vlChapaPanel">
+        <div class="tse-panel-head vl-chapa-head">
+          <h2>Configuração da chapa</h2>
+          <button type="button" class="btn btn-tse btn-tse-ghost" id="vlToggleChapa" aria-expanded="true">Ocultar chapa</button>
+        </div>
+        <div class="vl-chapa-body">
+          <div class="vl-chapa-row">
+            ${VOTE_CHAIN.map(item => `<div class="vl-chapa-cell ${DEFAULT_ON.has(item.office) ? "on" : ""}" id="vlCargoBox${esc(item.office)}">
+              <label class="vl-chapa-check"><input type="checkbox" id="vlCargo${esc(item.office)}" ${DEFAULT_ON.has(item.office) ? "checked" : ""}><span>${esc(item.short)}</span><span class="vl-chapa-full">${esc(item.label)}</span></label>
+              <input type="search" class="vl-chapa-search" id="vlSearch${esc(item.office)}" placeholder="Buscar" autocomplete="off" title="Filtrar ${esc(item.label)}">
+              <select class="vl-chapa-select" id="vlSelect${esc(item.office)}" aria-label="Candidato ${esc(item.label)}"><option value="">Candidato…</option></select>
+            </div>`).join("")}
+          </div>
+          <div class="vl-chapa-toolbar">
+            <div class="vl-mass-inline">
+              <label for="vlMass">Ciclos</label>
+              <input type="range" id="vlMass" min="1" max="120" value="1">
+              <output id="vlMassOut" for="vlMass">1</output>
             </div>
-            <div class="vl-controls">
-              <div class="vl-mass-row">
-                <label for="vlMass">Repetições do fluxo completo</label>
-                <input type="range" id="vlMass" min="1" max="120" value="1" aria-valuetext="1">
-                <div class="vl-mass-meta"><span>Ciclos</span><output id="vlMassOut" for="vlMass">1</output></div>
-              </div>
-              <label class="vl-sound-row"><input type="checkbox" id="vlSound" checked> Som oficial de confirmação</label>
-              <button type="button" class="btn btn-tse btn-tse-secondary" id="vlTestSound">Testar som da urna</button>
-              <div class="vl-actions">
-                <button type="button" class="btn btn-tse btn-tse-primary" id="vlStart">Iniciar tramitação</button>
-                <button type="button" class="btn btn-tse btn-tse-ghost" id="vlStop" disabled>Interromper</button>
+            <label class="vl-sound-row"><input type="checkbox" id="vlSound" checked> confirma-urna.mp3</label>
+            <button type="button" class="btn btn-tse btn-tse-secondary" id="vlTestSound">Testar som</button>
+            <button type="button" class="btn btn-tse btn-tse-primary" id="vlStart">Iniciar tramitação</button>
+            <button type="button" class="btn btn-tse btn-tse-ghost" id="vlStop" disabled>Interromper</button>
+          </div>
+        </div>
+      </section>
+      <div class="vl-stage">
+        <section class="vl-panel-block vl-tree-wrap vl-tree-wrap--hero" id="vlTreeWrap">
+          <div class="tse-panel-head vl-tree-head">
+            <div><h2>Tramitação do voto casado</h2><p>Fluxo horizontal na ordem oficial de registro</p></div>
+            <div class="vl-tree-head-actions">
+              <button type="button" class="btn btn-tse btn-tse-ghost" id="vlToggleLog" aria-expanded="true">Ocultar registro</button>
+              <div class="vl-progress-inline">
+                <span id="vlGlobalPct">0%</span>
+                <div class="vl-bar"><div class="vl-bar-fill" id="vlGlobalBar"></div></div>
               </div>
             </div>
           </div>
-        </aside>
-        <section class="vl-panel-block vl-tree-wrap" id="vlTreeWrap">
-          <div class="tse-panel-head">
-            <div><h2>Árvore de tramitação</h2><p>Ordem: majoritários → proporcionais</p></div>
-          </div>
-          <div class="vl-progress-block">
-            <span><span>Andamento geral</span><span id="vlGlobalPct">0%</span></span>
-            <div class="vl-bar"><div class="vl-bar-fill" id="vlGlobalBar"></div></div>
-          </div>
-          <div class="vl-tree-area">
-            <div class="vl-tree">
-              <div class="vl-hub" id="vlHub">Central de registro</div>
-              <div class="vl-hub-trunk"></div>
-              <div class="vl-branches" id="vlBranches"></div>
+          <div class="vl-tree-area vl-tree-area--flow">
+            <div class="vl-flow">
+              <div class="vl-flow-hub" id="vlHub"><span>Início</span><small>Central de registro</small></div>
+              <div class="vl-flow-track" id="vlBranches"></div>
             </div>
           </div>
           <div class="vl-packet" id="vlPacket" aria-hidden="true"></div>
         </section>
-        <aside class="vl-panel-block vl-log-panel">
-          <div class="tse-panel-head"><h2>Registro de operações</h2></div>
-          <div class="vl-terminal-out" id="vlTerminalOut" aria-live="polite"></div>
-          <div class="vl-stats">
-            <div>Registros<b id="vlStatReg">0</b></div>
-            <div>Ciclo atual<b id="vlStatCycle">—</b></div>
+        <aside class="vl-panel-block vl-log-panel" id="vlLogPanel">
+          <div class="tse-panel-head">
+            <h2>Registro</h2>
           </div>
-          <div class="vl-log-actions">
-            <button type="button" class="btn btn-tse btn-tse-ghost" id="vlClearLog">Limpar registro</button>
+          <div class="vl-log-body">
+            <div class="vl-terminal-out" id="vlTerminalOut" aria-live="polite"></div>
+            <div class="vl-stats">
+              <div>Registros<b id="vlStatReg">0</b></div>
+              <div>Ciclo<b id="vlStatCycle">—</b></div>
+            </div>
+            <button type="button" class="btn btn-tse btn-tse-ghost vl-log-clear" id="vlClearLog">Limpar</button>
           </div>
         </aside>
       </div>
@@ -455,8 +454,7 @@ window.CivicaVoteLaunch = (() => {
       renderTree();
       log("Dados oficiais de candidatura sincronizados.", "info");
       loadUrnaSounds().then(() => {
-        log("Áudio oficial de confirmação carregado.", "dim");
-        if (urnaBuffers.pilili) log("Áudio de encerramento de ciclo disponível.", "dim");
+        log("Áudio confirma-urna.mp3 carregado.", "dim");
       }).catch(() => log("Arquivo confirma-urna.mp3 não encontrado.", "warn"));
     } catch (e) {
       log(`ERR :: ${esc(e.message)}`, "warn");
