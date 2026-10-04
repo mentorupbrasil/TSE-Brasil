@@ -183,6 +183,7 @@ window.CivicaVoteLaunch = (() => {
     const flow = document.querySelector(".page-vote-launch .vl-flow");
     if (flow) flow.style.setProperty("--vl-steps", String(Math.max(1, chain.length)));
     deps.wireImageFallbacks?.(branches);
+    refreshProcessState();
   }
 
   function populateSelect(office) {
@@ -190,7 +191,7 @@ window.CivicaVoteLaunch = (() => {
     if (!sel) return;
     const list = (catalog.get(office) || []).slice(0, 400);
     const cur = selection.get(office) || "";
-    sel.innerHTML = `<option value="">— Candidato —</option>` + list.map(c =>
+    sel.innerHTML = `<option value="">Selecione o candidato</option>` + list.map(c =>
       `<option value="${esc(c.id)}">${esc(c.number)} · ${esc(c.name)} (${esc(c.party || "?")})</option>`
     ).join("");
     if (list.some(c => String(c.id) === String(cur))) sel.value = cur;
@@ -260,6 +261,46 @@ window.CivicaVoteLaunch = (() => {
     }
   }
 
+  function chapaReady() {
+    const chain = enabledChain();
+    if (!chain.length) return false;
+    return chain.every(item => selectedCandidate(item.office));
+  }
+
+  function refreshProcessState() {
+    const ready = chapaReady();
+    document.querySelectorAll(".vl-btn-start").forEach(btn => {
+      btn.disabled = running || !ready;
+    });
+    document.querySelectorAll(".vl-btn-stop").forEach(btn => {
+      btn.disabled = !running;
+    });
+    const badge = document.getElementById("vlProcessStatus");
+    if (badge) {
+      let state = "idle";
+      let label = "Aguardando chapa";
+      if (running) {
+        state = "run";
+        label = "Em tramitação";
+      } else if (ready) {
+        state = "ready";
+        label = "Pronto para iniciar";
+      }
+      badge.dataset.state = state;
+      badge.textContent = label;
+    }
+    const cta = document.getElementById("vlFlowCta");
+    const ctaTitle = document.getElementById("vlFlowCtaTitle");
+    const ctaText = document.getElementById("vlFlowCtaText");
+    if (cta) cta.hidden = running;
+    if (ctaTitle) ctaTitle.textContent = ready ? "Iniciar tramitação" : "Composição incompleta";
+    if (ctaText) {
+      ctaText.textContent = ready
+        ? "Confirme o início do lote de 3.000 registros na ordem legal do voto casado."
+        : "Marque os cargos e selecione um candidato em cada coluna da chapa.";
+    }
+  }
+
   function validateBeforeRun() {
     const chain = enabledChain();
     if (!chain.length) {
@@ -275,6 +316,18 @@ window.CivicaVoteLaunch = (() => {
     return chain;
   }
 
+  async function onStartTramitation() {
+    ensureAudio();
+    try {
+      await loadUrnaSounds();
+    } catch (e) {
+      deps.toast?.("Não foi possível carregar o áudio da urna.");
+      log(`ERR :: áudio — ${esc(e.message)}`, "warn");
+      return;
+    }
+    runTramitation();
+  }
+
   async function runTramitation() {
     if (running) return;
     const chain = validateBeforeRun();
@@ -283,10 +336,7 @@ window.CivicaVoteLaunch = (() => {
     abort = false;
     const cycles = BATCH_VOTE_COUNT;
     const timing = officeTiming(chain.length);
-    const btnStart = document.getElementById("vlStart");
-    const btnStop = document.getElementById("vlStop");
-    btnStart.disabled = true;
-    btnStop.disabled = false;
+    refreshProcessState();
     renderTree();
     resetNodeVisuals();
     log(`Processamento iniciado · lote de ${cycles.toLocaleString("pt-BR")} votos.`, "info");
@@ -335,8 +385,7 @@ window.CivicaVoteLaunch = (() => {
     }
     hub?.classList.remove("active");
     running = false;
-    btnStart.disabled = false;
-    btnStop.disabled = true;
+    refreshProcessState();
   }
 
   function stopTramitation() {
@@ -350,24 +399,20 @@ window.CivicaVoteLaunch = (() => {
       chk?.addEventListener("change", () => {
         box?.classList.toggle("on", chk.checked);
         renderTree();
+        refreshProcessState();
       });
       document.getElementById(`vlSelect${item.office}`)?.addEventListener("change", e => {
         selection.set(item.office, e.target.value);
         renderTree();
+        refreshProcessState();
       });
     });
-    document.getElementById("vlStart")?.addEventListener("click", async () => {
-      ensureAudio();
-      try {
-        await loadUrnaSounds();
-      } catch (e) {
-        deps.toast?.("Não foi possível carregar o áudio da urna.");
-        log(`ERR :: áudio — ${esc(e.message)}`, "warn");
-        return;
-      }
-      runTramitation();
+    document.querySelectorAll(".vl-btn-start").forEach(btn => {
+      btn.addEventListener("click", () => onStartTramitation());
     });
-    document.getElementById("vlStop")?.addEventListener("click", stopTramitation);
+    document.querySelectorAll(".vl-btn-stop").forEach(btn => {
+      btn.addEventListener("click", stopTramitation);
+    });
     document.getElementById("vlClearLog")?.addEventListener("click", () => {
       const out = document.getElementById("vlTerminalOut");
       if (out) out.innerHTML = "";
@@ -379,7 +424,7 @@ window.CivicaVoteLaunch = (() => {
       if (!log || !btn) return;
       log.classList.toggle("is-collapsed");
       const hidden = log.classList.contains("is-collapsed");
-      btn.textContent = hidden ? "Exibir registro" : "Recolher registro";
+      btn.textContent = hidden ? "Exibir histórico" : "Histórico";
       btn.setAttribute("aria-expanded", hidden ? "false" : "true");
     });
   }
@@ -397,43 +442,55 @@ window.CivicaVoteLaunch = (() => {
           </div>
         </div>
       </header>
-      <section class="vl-chapa-panel vl-panel-block" id="vlChapaPanel">
+      <section class="vl-chapa-panel vl-panel-block tse-panel" id="vlChapaPanel">
         <div class="tse-panel-head vl-chapa-head">
           <h2>Composição da chapa eleitoral</h2>
         </div>
-        <div class="vl-chapa-body">
-          <div class="vl-chapa-row">
-            ${VOTE_CHAIN.map(item => `<div class="vl-chapa-cell ${DEFAULT_ON.has(item.office) ? "on" : ""}" id="vlCargoBox${esc(item.office)}">
-              <label class="vl-chapa-check"><input type="checkbox" id="vlCargo${esc(item.office)}" ${DEFAULT_ON.has(item.office) ? "checked" : ""}><span>${esc(item.short)}</span><span class="vl-chapa-full">${esc(item.label)}</span></label>
-              <select class="vl-chapa-select" id="vlSelect${esc(item.office)}" aria-label="Candidato ${esc(item.label)}"><option value="">— Candidato —</option></select>
+        <div class="vl-chapa-body tse-form-grid vl-chapa-grid">
+            ${VOTE_CHAIN.map(item => `<div class="vl-chapa-cell tse-field ${DEFAULT_ON.has(item.office) ? "on" : ""}" id="vlCargoBox${esc(item.office)}">
+              <span class="tse-label">${esc(item.label)}</span>
+              <label class="vl-chapa-check"><input type="checkbox" id="vlCargo${esc(item.office)}" ${DEFAULT_ON.has(item.office) ? "checked" : ""}><span>Incluir cargo</span></label>
+              <select class="vl-chapa-select" id="vlSelect${esc(item.office)}" aria-label="Candidato ${esc(item.label)}"><option value="">Selecione o candidato</option></select>
             </div>`).join("")}
-          </div>
-          <div class="vl-chapa-toolbar">
-            <button type="button" class="btn btn-tse btn-tse-primary" id="vlStart">Processar</button>
-            <button type="button" class="btn btn-tse btn-tse-ghost" id="vlStop" disabled>Suspender</button>
-          </div>
+        </div>
+      </section>
+      <section class="vl-command-bar" aria-label="Controle de tramitação">
+        <div class="vl-command-left">
+          <span class="vl-status-badge" id="vlProcessStatus" data-state="idle">Aguardando chapa</span>
+          <span class="vl-command-meta">Lote · 3.000 votos · duração prevista 3 h</span>
+        </div>
+        <div class="vl-command-actions">
+          <button type="button" class="btn btn-tse btn-tse-primary vl-btn-start" id="vlStart">Iniciar tramitação</button>
+          <button type="button" class="btn btn-tse btn-tse-secondary vl-btn-stop" id="vlStop" disabled>Suspender</button>
         </div>
       </section>
       <div class="vl-stage">
-        <section class="vl-panel-block vl-tree-wrap vl-tree-wrap--hero" id="vlTreeWrap">
+        <section class="vl-panel-block vl-tree-wrap vl-tree-wrap--hero tse-panel" id="vlTreeWrap">
           <div class="tse-panel-head vl-tree-head">
             <div><h2>Fluxo de registro</h2></div>
             <div class="vl-tree-head-actions">
-              <button type="button" class="btn btn-tse btn-tse-ghost" id="vlToggleLog" aria-expanded="true">Recolher registro</button>
               <div class="vl-progress-inline">
+                <span class="vl-progress-label">Andamento do lote</span>
                 <span id="vlGlobalPct">0%</span>
                 <div class="vl-bar"><div class="vl-bar-fill" id="vlGlobalBar"></div></div>
               </div>
+              <button type="button" class="btn btn-tse btn-tse-ghost vl-btn-compact" id="vlToggleLog" aria-expanded="true">Histórico</button>
             </div>
           </div>
           <div class="vl-tree-area vl-tree-area--flow">
             <div class="vl-flow">
               <div class="vl-flow-hub" id="vlHub" aria-label="Início do fluxo">
-                <span class="vl-hub-icon" aria-hidden="true"></span>
                 <span class="vl-hub-title">Início</span>
               </div>
               <div class="vl-flow-connector" aria-hidden="true"></div>
               <div class="vl-flow-track" id="vlBranches"></div>
+            </div>
+            <div class="vl-flow-cta" id="vlFlowCta">
+              <div class="vl-flow-cta-card">
+                <h3 id="vlFlowCtaTitle">Composição incompleta</h3>
+                <p id="vlFlowCtaText">Marque os cargos e selecione um candidato em cada coluna da chapa.</p>
+                <button type="button" class="btn btn-tse btn-tse-primary vl-btn-start">Iniciar tramitação</button>
+              </div>
             </div>
           </div>
           <div class="vl-packet" id="vlPacket" aria-hidden="true"></div>
@@ -460,6 +517,7 @@ window.CivicaVoteLaunch = (() => {
     renderShell();
     bindCargoEvents();
     renderTree();
+    refreshProcessState();
     log("Aguardando configuração da chapa.", "dim");
     setStat("vlStatVotes", "0");
     setStat("vlStatEta", "—");
