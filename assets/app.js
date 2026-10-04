@@ -183,8 +183,18 @@ async function route() {
     if (routeInfo.page === "vote-launch") {
       setBreadcrumbs([{ label: "Tramitação de votos" }]);
       if (window.CivicaVoteLaunch) {
-        await CivicaVoteLaunch.mount({ getCandidates, esc, officeLabel, toast, wireImageFallbacks });
+        await CivicaVoteLaunch.mount({
+          getCandidates,
+          esc,
+          officeLabel,
+          toast,
+          wireImageFallbacks,
+          toggleSidebarDock,
+          isSidebarDockHidden
+        });
       }
+    } else {
+      setSidebarDockHidden(false);
     }
   } catch (error) {
     toast(error.message || "Não foi possível carregar esta área.");
@@ -690,6 +700,21 @@ async function globalSearch(term) {
 
 function openSidebar() { $("#sidebar").classList.add("open"); $("#sidebarBackdrop").classList.add("show"); $("#menuBtn").setAttribute("aria-expanded", "true"); }
 function closeSidebar() { $("#sidebar").classList.remove("open"); $("#sidebarBackdrop").classList.remove("show"); $("#menuBtn").setAttribute("aria-expanded", "false"); }
+
+const SIDEBAR_DOCK_CLASS = "sidebar-docked-hidden";
+
+function setSidebarDockHidden(hidden) {
+  document.body.classList.toggle(SIDEBAR_DOCK_CLASS, hidden);
+  return hidden;
+}
+
+function toggleSidebarDock() {
+  return setSidebarDockHidden(!document.body.classList.contains(SIDEBAR_DOCK_CLASS));
+}
+
+function isSidebarDockHidden() {
+  return document.body.classList.contains(SIDEBAR_DOCK_CLASS);
+}
 
 function bindEvents() {
   document.addEventListener("click", event => {
