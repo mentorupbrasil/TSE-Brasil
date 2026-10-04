@@ -48,19 +48,30 @@ window.CivicaVoteLaunch = (() => {
     return audioCtx;
   }
 
+  async function decodeSound(ctx, url) {
+    const res = await fetch(url, { cache: "force-cache" });
+    if (!res.ok) throw new Error(`Áudio indisponível: ${url}`);
+    return await ctx.decodeAudioData(await res.arrayBuffer());
+  }
+
   async function loadUrnaSounds() {
-    if (urnaBuffers.confirma && urnaBuffers.pilili) return urnaBuffers;
+    if (urnaBuffers.confirma) return urnaBuffers;
     if (urnaLoadPromise) return urnaLoadPromise;
     urnaLoadPromise = (async () => {
       const ctx = ensureAudio();
-      const files = [
-        ["confirma", "/assets/sounds/urna-confirma.wav"],
-        ["pilili", "/assets/sounds/urna-pilili.wav"]
+      urnaBuffers.confirma = await decodeSound(ctx, "/assets/sounds/confirma-urna.mp3");
+      const pililiCandidates = [
+        "/assets/sounds/pilili-urna.mp3",
+        "/assets/sounds/pilili-urna.wav",
+        "/assets/sounds/urna-pilili.wav"
       ];
-      for (const [key, url] of files) {
-        const res = await fetch(url, { cache: "force-cache" });
-        if (!res.ok) throw new Error(`Áudio indisponível: ${url}`);
-        urnaBuffers[key] = await ctx.decodeAudioData(await res.arrayBuffer());
+      for (const url of pililiCandidates) {
+        try {
+          urnaBuffers.pilili = await decodeSound(ctx, url);
+          break;
+        } catch {
+          /* tenta próximo */
+        }
       }
       return urnaBuffers;
     })();
@@ -76,15 +87,9 @@ window.CivicaVoteLaunch = (() => {
       const ctx = ensureAudio();
       const src = ctx.createBufferSource();
       src.buffer = buffer;
-      const filter = ctx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.value = 3400;
-      filter.Q.value = 0.65;
       const gain = ctx.createGain();
-      const vol = kind === "pilili" ? 0.92 : 0.88;
-      gain.gain.value = vol;
-      src.connect(filter);
-      filter.connect(gain);
+      gain.gain.value = kind === "confirma" ? 1 : 0.9;
+      src.connect(gain);
       gain.connect(ctx.destination);
       src.start(0);
     } catch {
@@ -97,6 +102,7 @@ window.CivicaVoteLaunch = (() => {
   }
 
   function playUrnaPilili() {
+    if (!urnaBuffers.pilili) return;
     playUrnaSample("pilili");
   }
 
@@ -340,8 +346,10 @@ window.CivicaVoteLaunch = (() => {
       try {
         await loadUrnaSounds();
         playUrnaBeep();
-        await sleep(220);
-        playUrnaPilili();
+        if (urnaBuffers.pilili) {
+          await sleep(280);
+          playUrnaPilili();
+        }
       } catch (e) {
         deps.toast?.("Áudio da urna indisponível.");
       }
@@ -388,8 +396,8 @@ window.CivicaVoteLaunch = (() => {
               <output id="vlMassOut" for="vlMass">1</output>
             </div>
             <div class="vl-sound-block">
-              <label class="vl-sound-row"><input type="checkbox" id="vlSound" checked> Áudio de urna (confirmação + pilili)</label>
-              <button type="button" class="vl-btn vl-btn-small" id="vlTestSound">Testar sons</button>
+              <label class="vl-sound-row"><input type="checkbox" id="vlSound" checked> Som oficial (confirma-urna.mp3)</label>
+              <button type="button" class="vl-btn vl-btn-small" id="vlTestSound">Testar confirmação</button>
             </div>
             <div class="vl-actions">
               <button type="button" class="vl-btn" id="vlStart">Iniciar tramitação</button>
@@ -439,7 +447,10 @@ window.CivicaVoteLaunch = (() => {
       await loadAllCatalogs();
       renderTree();
       log("READY :: catálogos TSE sincronizados.", "info");
-      loadUrnaSounds().then(() => log("AUDIO :: samples UE carregados.", "dim")).catch(() => log("WARN :: samples de áudio offline.", "warn"));
+      loadUrnaSounds().then(() => {
+        log("AUDIO :: confirma-urna.mp3 carregado.", "dim");
+        if (urnaBuffers.pilili) log("AUDIO :: pilili auxiliar disponível.", "dim");
+      }).catch(() => log("WARN :: confirma-urna.mp3 não encontrado.", "warn"));
     } catch (e) {
       log(`ERR :: ${esc(e.message)}`, "warn");
       deps.toast?.(e.message || "Falha ao carregar candidatos.");

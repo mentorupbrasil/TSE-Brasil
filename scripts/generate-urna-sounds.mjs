@@ -1,6 +1,6 @@
 /**
- * Gera réplicas do áudio da urna (confirmação por cargo + pilili de fim de votação).
- * Base: beep de hardware PC/speaker embutido — seno banda-limitada, sem onda quadrada.
+ * Gera réplica opcional do pilili (fim de ciclo).
+ * Confirmação por cargo: use o arquivo oficial assets/sounds/confirma-urna.mp3
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -36,26 +36,6 @@ function writeWav(name, pcmFloat) {
   console.log("wrote", name, buf.length, "bytes");
 }
 
-/** Beep único ao confirmar cada cargo (curto, seco, médio-agudo). */
-function synthConfirma() {
-  const dur = 0.105;
-  const len = Math.floor(dur * SR);
-  const pcm = new Float32Array(len);
-  const f = 988;
-  for (let i = 0; i < len; i++) {
-    const t = i / SR;
-    const attack = Math.min(1, i / (SR * 0.0025));
-    const decay = Math.exp(-t * 28);
-    const env = attack * decay;
-    const s =
-      Math.sin(2 * Math.PI * f * t) * 0.78 +
-      Math.sin(2 * Math.PI * f * 2 * t) * 0.06 +
-      Math.sin(2 * Math.PI * f * 3 * t) * 0.015;
-    pcm[i] = s * env * 0.55;
-  }
-  return pcm;
-}
-
 /** Sequência "pilili" ao encerrar o ciclo completo de votação. */
 function synthPilili() {
   const seq = [
@@ -84,5 +64,4 @@ function synthPilili() {
   return pcm;
 }
 
-writeWav("urna-confirma.wav", synthConfirma());
 writeWav("urna-pilili.wav", synthPilili());
