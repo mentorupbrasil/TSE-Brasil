@@ -165,53 +165,11 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.65rem 1rem;
+  justify-content: flex-end;
+  gap: 0.5rem;
   margin-top: 0.85rem;
   padding-top: 0.85rem;
   border-top: 1px solid var(--vl-line);
-}
-
-.page-vote-launch .vl-mass-inline {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  color: var(--vl-muted);
-  min-width: 180px;
-  flex: 1 1 180px;
-}
-
-.page-vote-launch .vl-mass-inline label {
-  font-weight: 700;
-  text-transform: uppercase;
-  font-size: 0.6875rem;
-  letter-spacing: 0.04em;
-}
-
-.page-vote-launch .vl-mass-inline input[type="range"] {
-  flex: 1;
-  accent-color: var(--vl-blue);
-  min-width: 80px;
-}
-
-.page-vote-launch .vl-mass-inline output {
-  font-weight: 700;
-  color: var(--vl-blue);
-  min-width: 1.5rem;
-  text-align: right;
-}
-
-.page-vote-launch .vl-sound-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
-  color: var(--vl-muted);
-  white-space: nowrap;
-}
-
-.page-vote-launch .vl-chapa-toolbar .btn-tse-primary {
-  margin-left: auto;
 }
 
 /* —— Palco: árvore principal + registro lateral —— */
@@ -612,6 +570,17 @@
   font-family: "Open Sans", sans-serif;
 }
 
+.page-vote-launch .vl-stats--batch b {
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.page-vote-launch .vl-stats--batch div:last-child b {
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
 @media (max-width: 1200px) {
   .page-vote-launch .vl-chapa-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -629,13 +598,12 @@
   .page-vote-launch .vl-chapa-row {
     grid-template-columns: 1fr 1fr;
   }
-  .page-vote-launch .vl-chapa-toolbar .btn-tse-primary {
-    margin-left: 0;
-    width: 100%;
+  .page-vote-launch .vl-chapa-toolbar .btn-tse {
+    flex: 1 1 auto;
   }
   .page-vote-launch .vl-chapa-toolbar {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    justify-content: stretch;
   }
   .page-vote-launch .vl-flow {
     flex-direction: column;

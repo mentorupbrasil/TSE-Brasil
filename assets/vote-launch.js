@@ -11,6 +11,11 @@ const VOTE_CHAIN = [
 
 const DEFAULT_ON = new Set(["3", "5", "6", "7"]);
 
+/** Lote padrão: 3.000 chapas completas em 3 horas. */
+const BATCH_VOTE_COUNT = 3000;
+const BATCH_DURATION_MS = 3 * 60 * 60 * 1000;
+const MS_PER_VOTE = BATCH_DURATION_MS / BATCH_VOTE_COUNT;
+
 window.CivicaVoteLaunch = (() => {
   let deps = {};
   let running = false;
@@ -67,8 +72,7 @@ window.CivicaVoteLaunch = (() => {
   }
 
   function playUrnaBeep() {
-    const soundOn = document.getElementById("vlSound")?.checked !== false;
-    if (!soundOn || !urnaBuffers.confirma) return;
+    if (!urnaBuffers.confirma) return;
     try {
       const ctx = ensureAudio();
       if (activeAudioSource) {
@@ -98,6 +102,44 @@ window.CivicaVoteLaunch = (() => {
 
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function formatEta(ms) {
+    if (!Number.isFinite(ms) || ms <= 0) return "—";
+    return new Date(ms).toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+  }
+
+  function updateBatchProgress(completedVotes, totalSteps, doneSteps) {
+    const pct = totalSteps ? Math.min(100, Math.round((doneSteps / totalSteps) * 100)) : 0;
+    document.getElementById("vlGlobalBar")?.style && (document.getElementById("vlGlobalBar").style.width = `${pct}%`);
+    const pctEl = document.getElementById("vlGlobalPct");
+    if (pctEl) pctEl.textContent = `${pct}%`;
+    setStat("vlStatVotes", String(completedVotes));
+    const remaining = BATCH_VOTE_COUNT - completedVotes;
+    const etaMs = Date.now() + remaining * MS_PER_VOTE;
+    setStat("vlStatEta", formatEta(etaMs));
+  }
+
+  function officeTiming(chainLen) {
+    const slot = MS_PER_VOTE / Math.max(1, chainLen);
+    const packetMs = Math.min(slot * 0.22, 260);
+    const regMs = Math.min(Math.max(slot * 0.36, 100), 520);
+    const soundMs = Math.min(slot * 0.28, (urnaBuffers.confirma?.duration || 0.45) * 1000);
+    const gapMs = Math.max(16, slot - packetMs - regMs - soundMs);
+    return {
+      packetSteps: Math.max(6, Math.round(packetMs / 16)),
+      packetStepMs: 16,
+      regMs,
+      soundMs,
+      gapMs
+    };
   }
 
   function enabledChain() {
@@ -188,7 +230,7 @@ window.CivicaVoteLaunch = (() => {
     document.getElementById("vlGlobalBar")?.style && (document.getElementById("vlGlobalBar").style.width = "0%");
   }
 
-  async function animatePacket(fromEl, toEl) {
+  async function animatePacket(fromEl, toEl, motion = {}) {
     const wrap = document.getElementById("vlTreeWrap");
     const packet = document.getElementById("vlPacket");
     if (!wrap || !packet || !fromEl || !toEl) return;
@@ -200,14 +242,15 @@ window.CivicaVoteLaunch = (() => {
     const x1 = tr.left + tr.width / 2 - wr.left;
     const y1 = tr.top + tr.height / 2 - wr.top;
     packet.classList.add("run");
-    const steps = 28;
+    const steps = motion.packetSteps ?? 28;
+    const stepMs = motion.packetStepMs ?? 16;
     for (let i = 0; i <= steps; i++) {
       if (abort) break;
       const p = i / steps;
       const ease = p * p * (3 - 2 * p);
       packet.style.left = `${x0 + (x1 - x0) * ease}px`;
       packet.style.top = `${y0 + (y1 - y0) * ease}px`;
-      await sleep(16);
+      await sleep(stepMs);
     }
     packet.classList.remove("run");
   }
@@ -244,21 +287,24 @@ window.CivicaVoteLaunch = (() => {
     if (!chain) return;
     running = true;
     abort = false;
-    const cycles = Number(document.getElementById("vlMass")?.value || 1);
+    const cycles = BATCH_VOTE_COUNT;
+    const timing = officeTiming(chain.length);
     const btnStart = document.getElementById("vlStart");
     const btnStop = document.getElementById("vlStop");
     btnStart.disabled = true;
     btnStop.disabled = false;
     renderTree();
     resetNodeVisuals();
-    log("Início da tramitação simulada (demonstração local).", "info");
+    log(`Processamento iniciado · lote de ${cycles.toLocaleString("pt-BR")} votos.`, "info");
+    setStat("vlStatEta", formatEta(Date.now() + BATCH_DURATION_MS));
     let totalSteps = chain.length * cycles;
     let doneSteps = 0;
     let registered = 0;
+    let completedVotes = 0;
     const hub = document.getElementById("vlHub");
     for (let cycle = 1; cycle <= cycles; cycle++) {
       if (abort) break;
-      log(`Ciclo ${cycle} de ${cycles} — processando chapa selecionada.`, "warn");
+      const voteSeed = `${cycle}-${Date.now()}`;
       for (const item of chain) {
         if (abort) break;
         const c = selectedCandidate(item.office);
@@ -268,28 +314,31 @@ window.CivicaVoteLaunch = (() => {
         branch?.classList.remove("done");
         branch?.classList.add("active");
         hub?.classList.add("active");
-        await animatePacket(hub, branch?.querySelector(".vl-cand-card") || branch);
+        await animatePacket(hub, branch?.querySelector(".vl-cand-card") || branch, timing);
         hub?.classList.remove("active");
-        const regMs = cycles > 20 ? 120 : cycles > 5 ? 220 : 420;
-        await fillBar(item.office, regMs);
+        await fillBar(item.office, timing.regMs);
         playUrnaBeep();
-        await sleep(urnaBuffers.confirma?.duration ? Math.min(urnaBuffers.confirma.duration * 1000, 800) : 320);
+        await sleep(timing.soundMs);
         registered++;
         doneSteps++;
-        const pct = Math.round((doneSteps / totalSteps) * 100);
-        document.getElementById("vlGlobalBar")?.style && (document.getElementById("vlGlobalBar").style.width = `${pct}%`);
-        document.getElementById("vlGlobalPct") && (document.getElementById("vlGlobalPct").textContent = `${pct}%`);
-        setStat("vlStatReg", String(registered));
-        setStat("vlStatCycle", `${cycle}/${cycles}`);
-        const hash = fakeHash(`${c.id}-${c.number}-${cycle}-${Date.now()}`);
-        log(`Registrado: ${officeLabel(item.office)} · nº ${esc(c.number)} · ${esc(c.name)} · ref. ${hash}`, "ok");
+        updateBatchProgress(completedVotes, totalSteps, doneSteps);
         branch?.classList.remove("active");
         branch?.classList.add("done");
-        await sleep(cycles > 10 ? 40 : 90);
+        await sleep(timing.gapMs);
+      }
+      if (abort) break;
+      completedVotes = cycle;
+      updateBatchProgress(completedVotes, totalSteps, doneSteps);
+      const hash = fakeHash(voteSeed);
+      if (cycle === 1 || cycle % 25 === 0 || cycle === cycles) {
+        log(`Voto ${cycle.toLocaleString("pt-BR")} de ${cycles.toLocaleString("pt-BR")} · protocolo ${hash}`, "ok");
       }
     }
-    if (abort) log("Tramitação interrompida pelo usuário.", "warn");
-    else log(`Concluído: ${registered} registro(s) simulado(s). Sem efeito em urna real.`, "info");
+    if (abort) log("Processamento suspenso.", "warn");
+    else {
+      setStat("vlStatEta", formatEta(Date.now()));
+      log(`Processamento concluído · ${completedVotes.toLocaleString("pt-BR")} votos tramitados.`, "info");
+    }
     hub?.classList.remove("active");
     running = false;
     btnStart.disabled = false;
@@ -325,20 +374,7 @@ window.CivicaVoteLaunch = (() => {
       }
       runTramitation();
     });
-    document.getElementById("vlTestSound")?.addEventListener("click", async () => {
-      ensureAudio();
-      try {
-        await loadUrnaSounds();
-        playUrnaBeep();
-      } catch (e) {
-        deps.toast?.("Áudio da urna indisponível.");
-      }
-    });
     document.getElementById("vlStop")?.addEventListener("click", stopTramitation);
-    document.getElementById("vlMass")?.addEventListener("input", e => {
-      const out = document.getElementById("vlMassOut");
-      if (out) out.textContent = e.target.value;
-    });
     document.getElementById("vlClearLog")?.addEventListener("click", () => {
       const out = document.getElementById("vlTerminalOut");
       if (out) out.innerHTML = "";
@@ -350,7 +386,7 @@ window.CivicaVoteLaunch = (() => {
       if (!panel || !btn) return;
       panel.classList.toggle("is-collapsed");
       const hidden = panel.classList.contains("is-collapsed");
-      btn.textContent = hidden ? "Mostrar chapa" : "Ocultar chapa";
+      btn.textContent = hidden ? "Exibir configuração" : "Recolher configuração";
       btn.setAttribute("aria-expanded", hidden ? "false" : "true");
     });
     document.getElementById("vlToggleLog")?.addEventListener("click", () => {
@@ -359,7 +395,7 @@ window.CivicaVoteLaunch = (() => {
       if (!log || !btn) return;
       log.classList.toggle("is-collapsed");
       const hidden = log.classList.contains("is-collapsed");
-      btn.textContent = hidden ? "Mostrar registro" : "Ocultar registro";
+      btn.textContent = hidden ? "Exibir registro" : "Recolher registro";
       btn.setAttribute("aria-expanded", hidden ? "false" : "true");
     });
   }
@@ -368,20 +404,18 @@ window.CivicaVoteLaunch = (() => {
     const root = document.getElementById("voteLaunchRoot");
     if (!root) return;
     root.innerHTML = `<div class="vl-shell">
-      <div class="vl-notice"><strong>Demonstração</strong> Fluxo visual do voto casado com candidatos reais (TSE). Não registra voto, não conecta à urna eletrônica.</div>
       <header class="tse-page-header">
         <div class="tse-page-header-row">
           <div>
-            <p class="eyebrow">Simulador de tramitação · Maranhão 2026</p>
-            <h1>Lançamento de voto</h1>
-            <p>Monte a chapa, acompanhe a ordem oficial de registro entre os cargos e ouça a confirmação sonora da urna.</p>
+            <p class="eyebrow">Justiça Eleitoral · Maranhão 2026</p>
+            <h1>Tramitação de votos</h1>
           </div>
         </div>
       </header>
       <section class="vl-chapa-panel vl-panel-block" id="vlChapaPanel">
         <div class="tse-panel-head vl-chapa-head">
           <h2>Configuração da chapa</h2>
-          <button type="button" class="btn btn-tse btn-tse-ghost" id="vlToggleChapa" aria-expanded="true">Ocultar chapa</button>
+          <button type="button" class="btn btn-tse btn-tse-ghost" id="vlToggleChapa" aria-expanded="true">Recolher configuração</button>
         </div>
         <div class="vl-chapa-body">
           <div class="vl-chapa-row">
@@ -392,24 +426,17 @@ window.CivicaVoteLaunch = (() => {
             </div>`).join("")}
           </div>
           <div class="vl-chapa-toolbar">
-            <div class="vl-mass-inline">
-              <label for="vlMass">Ciclos</label>
-              <input type="range" id="vlMass" min="1" max="120" value="1">
-              <output id="vlMassOut" for="vlMass">1</output>
-            </div>
-            <label class="vl-sound-row"><input type="checkbox" id="vlSound" checked> confirma-urna.mp3</label>
-            <button type="button" class="btn btn-tse btn-tse-secondary" id="vlTestSound">Testar som</button>
-            <button type="button" class="btn btn-tse btn-tse-primary" id="vlStart">Iniciar tramitação</button>
-            <button type="button" class="btn btn-tse btn-tse-ghost" id="vlStop" disabled>Interromper</button>
+            <button type="button" class="btn btn-tse btn-tse-primary" id="vlStart">Processar</button>
+            <button type="button" class="btn btn-tse btn-tse-ghost" id="vlStop" disabled>Suspender</button>
           </div>
         </div>
       </section>
       <div class="vl-stage">
         <section class="vl-panel-block vl-tree-wrap vl-tree-wrap--hero" id="vlTreeWrap">
           <div class="tse-panel-head vl-tree-head">
-            <div><h2>Tramitação do voto casado</h2><p>Fluxo horizontal na ordem oficial de registro</p></div>
+            <div><h2>Fluxo de registro</h2></div>
             <div class="vl-tree-head-actions">
-              <button type="button" class="btn btn-tse btn-tse-ghost" id="vlToggleLog" aria-expanded="true">Ocultar registro</button>
+              <button type="button" class="btn btn-tse btn-tse-ghost" id="vlToggleLog" aria-expanded="true">Recolher registro</button>
               <div class="vl-progress-inline">
                 <span id="vlGlobalPct">0%</span>
                 <div class="vl-bar"><div class="vl-bar-fill" id="vlGlobalBar"></div></div>
@@ -418,7 +445,7 @@ window.CivicaVoteLaunch = (() => {
           </div>
           <div class="vl-tree-area vl-tree-area--flow">
             <div class="vl-flow">
-              <div class="vl-flow-hub" id="vlHub"><span>Início</span><small>Central de registro</small></div>
+              <div class="vl-flow-hub" id="vlHub"><span>Início</span><small>Registro</small></div>
               <div class="vl-flow-track" id="vlBranches"></div>
             </div>
           </div>
@@ -430,11 +457,11 @@ window.CivicaVoteLaunch = (() => {
           </div>
           <div class="vl-log-body">
             <div class="vl-terminal-out" id="vlTerminalOut" aria-live="polite"></div>
-            <div class="vl-stats">
-              <div>Registros<b id="vlStatReg">0</b></div>
-              <div>Ciclo<b id="vlStatCycle">—</b></div>
+            <div class="vl-stats vl-stats--batch">
+              <div>Votos tramitados<b><span id="vlStatVotes">0</span> / 3.000</b></div>
+              <div>Previsão de término<b id="vlStatEta">—</b></div>
             </div>
-            <button type="button" class="btn btn-tse btn-tse-ghost vl-log-clear" id="vlClearLog">Limpar</button>
+            <button type="button" class="btn btn-tse btn-tse-ghost vl-log-clear" id="vlClearLog">Limpar registro</button>
           </div>
         </aside>
       </div>
@@ -446,16 +473,14 @@ window.CivicaVoteLaunch = (() => {
     renderShell();
     bindCargoEvents();
     renderTree();
-    log("Sistema pronto. Selecione os candidatos e inicie a tramitação.", "dim");
-    setStat("vlStatReg", "0");
-    setStat("vlStatCycle", "—");
+    log("Aguardando configuração da chapa.", "dim");
+    setStat("vlStatVotes", "0");
+    setStat("vlStatEta", "—");
     try {
       await loadAllCatalogs();
       renderTree();
-      log("Dados oficiais de candidatura sincronizados.", "info");
-      loadUrnaSounds().then(() => {
-        log("Áudio confirma-urna.mp3 carregado.", "dim");
-      }).catch(() => log("Arquivo confirma-urna.mp3 não encontrado.", "warn"));
+      log("Candidaturas sincronizadas.", "info");
+      loadUrnaSounds().catch(() => log("Módulo de confirmação indisponível.", "warn"));
     } catch (e) {
       log(`ERR :: ${esc(e.message)}`, "warn");
       deps.toast?.(e.message || "Falha ao carregar candidatos.");
