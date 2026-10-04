@@ -404,14 +404,6 @@ window.CivicaVoteLaunch = (() => {
     const root = document.getElementById("voteLaunchRoot");
     if (!root) return;
     root.innerHTML = `<div class="vl-shell">
-      <header class="tse-page-header">
-        <div class="tse-page-header-row">
-          <div>
-            <p class="eyebrow">Justiça Eleitoral · Maranhão 2026</p>
-            <h1>Tramitação de votos</h1>
-          </div>
-        </div>
-      </header>
       <section class="vl-chapa-panel vl-panel-block" id="vlChapaPanel">
         <div class="tse-panel-head vl-chapa-head">
           <h2>Configuração da chapa</h2>
