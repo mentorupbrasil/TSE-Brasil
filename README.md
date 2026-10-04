@@ -4,10 +4,9 @@ Portal independente para consulta organizada de dados públicos eleitorais do Ma
 
 ## V6 — principais módulos
 
+- **Início (centro de comando)**: saúde das fontes, território MA agregado, cargos, maiores eleitorados e atalhos.
 - Candidaturas por cargo, partido e situação, com busca e exportação.
-- Partidos e fichas de candidatura.
-- Municípios do Maranhão.
-- Zonas, seções, bairros e locais de votação por município.
+- Municípios do Maranhão e zonas/seções por município.
 - **Simulador de urna** educativo: teclado, som, fotos oficiais, voto casado, programação por zona/seção real e painel ao vivo.
 - **Base de pessoas privada**, armazenada criptografada no navegador e separada dos lançamentos.
 - Status das fontes com contingência e mensagens amigáveis.

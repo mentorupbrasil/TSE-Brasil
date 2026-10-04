@@ -34,15 +34,12 @@
 
   <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
     <nav>
-      <a class="nav-link" href="/" data-route="/" data-nav="overview"><span>▦</span>Visão geral</a>
+      <a class="nav-link" href="/" data-route="/" data-nav="overview"><span>▦</span>Início</a>
+      <a class="nav-link" href="/lancamentos" data-route="/lancamentos" data-nav="launches"><span>▣</span>Simulador de urna</a>
       <a class="nav-link" href="/candidatos" data-route="/candidatos" data-nav="candidates"><span>◉</span>Candidaturas</a>
-      <a class="nav-link" href="/partidos" data-route="/partidos" data-nav="parties"><span>◆</span>Partidos</a>
       <a class="nav-link" href="/zonas" data-route="/zonas" data-nav="sections"><span>⌖</span>Zonas e seções</a>
-      <a class="nav-link" href="/bairros" data-route="/bairros" data-nav="neighborhoods"><span>▥</span>Bairros e locais</a>
       <a class="nav-link" href="/municipios" data-route="/municipios" data-nav="municipalities"><span>▤</span>Municípios</a>
       <a class="nav-link" href="/base" data-route="/base" data-nav="people"><span>♙</span>Base de pessoas</a>
-      <a class="nav-link" href="/lancamentos" data-route="/lancamentos" data-nav="launches"><span>▣</span>Simulador de urna</a>
-      <a class="nav-link" href="/fontes" data-route="/fontes" data-nav="sources"><span>ⓘ</span>Fontes e metodologia</a>
     </nav>
     <div class="sidebar-meta">
       <div><b>Portal independente</b><span>Organiza dados públicos da Justiça Eleitoral. Não é site oficial do TSE ou TRE-MA.</span></div>
@@ -55,39 +52,63 @@
     <div id="breadcrumbs" class="breadcrumbs" aria-label="Navegação estrutural"></div>
 
     <section class="page" id="page-overview" data-page="overview">
-      <div class="hero">
+      <div class="hero hub-hero">
         <div>
-          <span class="eyebrow">MARANHÃO • ELEIÇÕES 2026</span>
-          <h1>Dados eleitorais em uma visão única</h1>
-          <p>Candidaturas, partidos, municípios, zonas, seções e eleitorado agregados a partir de fontes públicas da Justiça Eleitoral.</p>
+          <span class="eyebrow">MARANHÃO • ELEIÇÕES GERAIS 2026</span>
+          <h1>Centro de comando eleitoral</h1>
+          <p>Candidaturas oficiais, estrutura territorial real e simulador de urna — tudo a partir de dados abertos do TSE, organizados para consulta e demonstração local.</p>
         </div>
         <div class="hero-actions">
-          <button class="btn secondary" id="refreshAll">Atualizar dados</button>
-          <button class="btn ghost" id="printOverview">Imprimir / PDF</button>
+          <a class="btn primary" href="/lancamentos" data-route="/lancamentos">Abrir simulador</a>
+          <button class="btn secondary" id="refreshAll">Atualizar painel</button>
         </div>
       </div>
+
+      <div id="overviewHealthStrip" class="overview-health-strip"></div>
+
       <div class="metrics six" id="overviewMetrics">
-        <article><span>Candidaturas</span><strong id="metricCandidates">—</strong><small>cargos monitorados</small></article>
-        <article><span>Municípios</span><strong>217</strong><small>Maranhão</small></article>
-        <article><span>Seções</span><strong id="metricSections">—</strong><small>base 2026 • MA</small></article>
-        <article><span>Zonas</span><strong id="metricZones">—</strong><small>zonas distintas</small></article>
-        <article><span>Eleitorado agregado</span><strong id="metricElectors">—</strong><small>base por seção</small></article>
-        <article><span>Fonte</span><strong class="metric-word" id="metricSource">TSE</strong><small id="metricSourceNote">consulta em tempo real</small></article>
+        <article><span>Candidaturas MA/BR</span><strong id="metricCandidates">—</strong><small>soma dos cargos</small></article>
+        <article><span>Municípios</span><strong id="metricMunicipalities">—</strong><small>com seções publicadas</small></article>
+        <article><span>Seções eleitorais</span><strong id="metricSections">—</strong><small>arquivo TSE 2026</small></article>
+        <article><span>Zonas</span><strong id="metricZones">—</strong><small>distintas no estado</small></article>
+        <article><span>Eleitorado</span><strong id="metricElectors">—</strong><small>agregado por seção</small></article>
+        <article><span>Simulação local</span><strong id="metricSimVotes">0</strong><small>votos na sessão ativa</small></article>
       </div>
-      <div class="dashboard-grid">
+      <div class="data-meta" id="overviewMeta"></div>
+
+      <div class="hub-quick-grid">
+        <a class="hub-quick-card" href="/lancamentos" data-route="/lancamentos"><b>Simulador de urna</b><span>Voto unitário, voto casado e programação por zona/seção</span></a>
+        <a class="hub-quick-card" href="/candidatos" data-route="/candidatos"><b>Candidaturas</b><span>Fotos, números e situação de registro por cargo</span></a>
+        <a class="hub-quick-card" href="/zonas" data-route="/zonas"><b>Zonas e seções</b><span>Locais de votação e eleitorado por município</span></a>
+        <a class="hub-quick-card" href="/municipios" data-route="/municipios"><b>Municípios</b><span>Fichas territoriais dos 217 municípios</span></a>
+      </div>
+
+      <div class="dashboard-grid hub-dashboard">
         <section class="panel">
-          <div class="panel-head"><div><h2>Candidaturas por cargo</h2><p>Quantidade retornada pela fonte oficial</p></div></div>
-          <div id="officeChart" class="bar-chart skeleton-box"></div>
+          <div class="panel-head"><div><h2>Cargos em disputa</h2><p>Total de candidaturas retornadas pela fonte</p></div></div>
+          <div id="overviewOfficeGrid" class="office-grid"></div>
         </section>
         <section class="panel">
-          <div class="panel-head"><div><h2>Distribuição partidária</h2><p id="partyChartLabel">Deputado federal</p></div><select id="overviewPartyOffice" aria-label="Cargo para distribuição partidária"></select></div>
-          <div id="partyChart" class="bar-chart skeleton-box"></div>
+          <div class="panel-head"><div><h2>Maiores eleitorados</h2><p>Municípios com mais eleitores na base oficial</p></div></div>
+          <div id="overviewTopMunicipalities" class="bar-chart skeleton-box"></div>
         </section>
       </div>
-      <section class="panel">
-        <div class="panel-head"><div><h2>Candidaturas recentes na consulta</h2><p>Prévia do cargo selecionado</p></div><select id="overviewOffice" aria-label="Cargo"></select></div>
-        <div id="overviewCandidates" class="candidate-list skeleton-box"></div>
-        <div class="panel-footer"><a class="text-link" href="/candidatos" data-route="/candidatos">Ver catálogo completo →</a></div>
+
+      <div class="dashboard-grid hub-dashboard">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Situação das candidaturas</h2><p id="overviewStatusLabel">Deputado federal</p></div><select id="overviewStatusOffice" aria-label="Cargo para situação"></select></div>
+          <div id="overviewStatusChart" class="bar-chart skeleton-box"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h2>Destaques do cargo</h2><p>Prévia rápida para navegação</p></div><select id="overviewOffice" aria-label="Cargo"></select></div>
+          <div id="overviewCandidates" class="candidate-list skeleton-box"></div>
+          <div class="panel-footer"><a class="text-link" href="/candidatos" data-route="/candidatos">Abrir catálogo completo →</a></div>
+        </section>
+      </div>
+
+      <section class="panel overview-sources-panel">
+        <div class="panel-head"><div><h2>Fontes e transparência</h2><p>Como os dados chegam ao portal</p></div></div>
+        <div id="overviewSources" class="overview-sources-copy"></div>
       </section>
     </section>
 
@@ -113,16 +134,6 @@
       <div id="candidateDetail"></div>
     </section>
 
-    <section class="page" id="page-parties" data-page="parties">
-      <div class="page-head"><div><span class="eyebrow">ORGANIZAÇÃO POR SIGLA</span><h1>Partidos</h1><p>Distribuição descritiva das candidaturas retornadas pela fonte para o cargo selecionado.</p></div></div>
-      <div class="filter-panel compact"><label>Cargo<select id="partyOffice"></select></label><label class="grow">Buscar partido<input id="partySearch" placeholder="Sigla ou nome"></label></div>
-      <div id="partyGrid" class="party-grid"></div>
-    </section>
-
-    <section class="page" id="page-party-detail" data-page="party-detail">
-      <div id="partyDetail"></div>
-    </section>
-
     <section class="page" id="page-sections" data-page="sections">
       <div class="page-head">
         <div><span class="eyebrow">ELEITORADO 2026 • MA</span><h1>Zonas e seções eleitorais</h1><p>Consulta por município a partir do arquivo oficial de locais de votação publicado pelo TSE.</p></div>
@@ -144,22 +155,6 @@
       <div id="zoneCards" class="zone-cards"></div>
       <section class="panel"><div class="table-wrap"><table><thead><tr><th>Município</th><th>Bairro do local</th><th>Zona</th><th>Seção</th><th>Local de votação</th><th>Eleitores</th><th>Acessibilidade</th></tr></thead><tbody id="sectionsBody"></tbody></table></div></section>
       <div class="pagination" id="sectionPagination"></div>
-    </section>
-
-    <section class="page" id="page-neighborhoods" data-page="neighborhoods">
-      <div class="page-head"><div><span class="eyebrow">LOCAIS DE VOTAÇÃO • 2026</span><h1>Bairros e locais por município</h1><p>O bairro exibido é o bairro do <b>local de votação</b> informado na base oficial, não necessariamente o bairro de residência do eleitor.</p></div></div>
-      <div class="filter-panel"><label class="grow">Município<select id="neighborhoodMunicipality"></select></label><label class="grow">Buscar bairro ou local<input id="neighborhoodSearch" placeholder="Ex.: Centro, escola, endereço"></label></div>
-      <div class="metrics four">
-        <article><span>Bairros</span><strong id="bairroMetric">—</strong></article>
-        <article><span>Locais de votação</span><strong id="localMetric">—</strong></article>
-        <article><span>Seções</span><strong id="bairroSectionMetric">—</strong></article>
-        <article><span>Eleitores agregados</span><strong id="bairroElectorMetric">—</strong></article>
-      </div>
-      <div class="data-meta" id="neighborhoodMeta"></div>
-      <div class="split-grid">
-        <section class="panel"><div class="panel-head"><div><h2>Bairros</h2><p>Resumo por bairro do local de votação.</p></div></div><div class="table-wrap tall"><table><thead><tr><th>Bairro</th><th>Zonas</th><th>Locais</th><th>Seções</th><th>Eleitores</th></tr></thead><tbody id="neighborhoodBody"></tbody></table></div></section>
-        <section class="panel"><div class="panel-head"><div><h2>Locais de votação</h2><p>Nome, endereço, zona e seções vinculadas.</p></div></div><div class="table-wrap tall"><table><thead><tr><th>Bairro</th><th>Zona</th><th>Local</th><th>Endereço</th><th>CEP</th><th>Seções</th><th>Eleitores</th></tr></thead><tbody id="locationsBody"></tbody></table></div></section>
-      </div>
     </section>
 
     <section class="page" id="page-municipalities" data-page="municipalities">
@@ -342,18 +337,6 @@
       </div>
     </section>
 
-    <section class="page" id="page-sources" data-page="sources">
-      <div class="page-head"><div><span class="eyebrow">TRANSPARÊNCIA</span><h1>Fontes e metodologia</h1><p>Como o portal consulta, transforma, armazena temporariamente e apresenta os dados públicos.</p></div></div>
-      <div id="sourceHealthCards" class="source-health-grid"></div>
-      <div class="source-cards">
-        <article><span class="card-icon">◉</span><b>Candidaturas 2026</b><p>As candidaturas são consultadas por cargo no serviço público do DivulgaCandContas. O portal não altera situação de registro nem cria candidaturas.</p><a target="_blank" rel="noopener" href="https://dadosabertos.tse.jus.br/dataset/candidatos-2026">Conjunto oficial de candidatos ↗</a></article>
-        <article><span class="card-icon">⌖</span><b>Zonas e seções</b><p>Zonas, seções, bairros e locais são consultados no recurso oficial “Eleitorado por local de votação — 2026”. O bairro se refere ao local de votação.</p><a target="_blank" rel="noopener" href="https://dadosabertos.tse.jus.br/dataset/eleitorado-2026">Conjunto oficial de eleitorado ↗</a></article>
-        <article><span class="card-icon">↻</span><b>Cache e contingência</b><p>O servidor mantém cache temporário. Se a fonte ficar indisponível e houver dado anterior em memória, o portal pode devolver a última consulta com indicação de contingência.</p></article>
-        <article><span class="card-icon">ⓘ</span><b>Horários</b><p>“Consulta realizada em” é o horário em que o portal acessou a fonte. “Fonte atualizada em” é usado apenas quando o próprio conjunto oficial disponibiliza essa informação.</p></article>
-        <article><span class="card-icon">≠</span><b>Independência</b><p>Este portal é independente e não é um produto oficial do Tribunal Superior Eleitoral ou do Tribunal Regional Eleitoral do Maranhão.</p></article>
-        <article><span class="card-icon">✓</span><b>Separação de dados</b><p>Dados oficiais, lançamentos manuais e a base privada de pessoas são áreas distintas. Dados pessoais não são publicados pelo portal.</p></article>
-      </div>
-    </section>
   </main>
 </div>
 
@@ -361,6 +344,7 @@
 <script src="/data/municipalities.js"></script>
 <script src="/data/election.js"></script>
 <script src="/assets/simulator.js"></script>
+<script src="/assets/overview.js"></script>
 <script src="/assets/app.js"></script>
 </body>
 </html>

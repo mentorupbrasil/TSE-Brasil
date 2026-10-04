@@ -15,12 +15,9 @@ const state = {
   health: null,
   candidateFilters: { party: "", status: "", search: "", sort: "name", page: 1, pageSize: 24 },
   sectionFilters: { zone: "", search: "", page: 1, pageSize: 50 },
-  partyOffice: cfg.defaultOffice || "6",
-  partySearch: "",
   globalSearchTimer: null,
   simulation: null,
   simulationRecordSearch: "",
-  neighborhoodSearch: "",
   people: [],
   peopleKey: null,
   peopleSalt: null,
@@ -69,7 +66,7 @@ async function api(path, { refresh = false } = {}) {
 
 function setPage(page) {
   $$(".page").forEach(el => el.classList.toggle("active", el.dataset.page === page));
-  const navMap = { "candidate-detail": "candidates", "party-detail": "parties", "municipality-detail": "municipalities" };
+  const navMap = { "candidate-detail": "candidates", "municipality-detail": "municipalities" };
   const activeNav = navMap[page] || page;
   $$(".nav-link").forEach(el => el.classList.toggle("active", el.dataset.nav === activeNav));
   $("#mainContent")?.focus({ preventScroll: true });
@@ -96,56 +93,47 @@ function parseRoute() {
   if (path === "/") return { page: "overview" };
   if (parts[0] === "candidatos" && parts.length >= 3) return { page: "candidate-detail", office: parts[1], id: parts.slice(2).join("/") };
   if (parts[0] === "candidatos") return { page: "candidates" };
-  if (parts[0] === "partidos" && parts.length >= 3) return { page: "party-detail", office: parts[1], party: parts.slice(2).join("/") };
-  if (parts[0] === "partidos") return { page: "parties" };
+  if (parts[0] === "partidos" || parts[0] === "bairros" || parts[0] === "fontes") return { page: "overview", legacy: true };
   if (parts[0] === "zonas") return { page: "sections" };
-  if (parts[0] === "bairros") return { page: "neighborhoods" };
   if (parts[0] === "municipios" && parts[1]) return { page: "municipality-detail", slug: parts.slice(1).join("/") };
   if (parts[0] === "municipios") return { page: "municipalities" };
   if (parts[0] === "base") return { page: "people" };
   if (parts[0] === "lancamentos" || parts[0] === "simulacao") return { page: "launches", legacy: parts[0] === "simulacao" };
-  if (parts[0] === "fontes") return { page: "sources" };
   return { page: "overview", notFound: true };
 }
 
 async function route() {
   const routeInfo = parseRoute();
-  if (routeInfo.legacy) history.replaceState({}, "", "/lancamentos");
+  if (routeInfo.legacy && location.pathname.includes("simulacao")) history.replaceState({}, "", "/lancamentos");
+  else if (routeInfo.legacy) history.replaceState({}, "", "/");
   setPage(routeInfo.page);
   window.scrollTo({ top: 0, behavior: "auto" });
   try {
     if (routeInfo.page === "overview") { setBreadcrumbs([]); await loadOverview(); }
     if (routeInfo.page === "candidates") { setBreadcrumbs([{ label: "Candidaturas" }]); await loadCandidatePage(); }
     if (routeInfo.page === "candidate-detail") await loadCandidateDetail(routeInfo.office, routeInfo.id);
-    if (routeInfo.page === "parties") { setBreadcrumbs([{ label: "Partidos" }]); await loadPartiesPage(); }
-    if (routeInfo.page === "party-detail") await loadPartyDetail(routeInfo.office, routeInfo.party);
     if (routeInfo.page === "sections") { setBreadcrumbs([{ label: "Zonas e seções" }]); await loadSectionsPage(); }
-    if (routeInfo.page === "neighborhoods") { setBreadcrumbs([{ label: "Bairros e locais" }]); await loadNeighborhoodsPage(); }
     if (routeInfo.page === "municipalities") { setBreadcrumbs([{ label: "Municípios" }]); renderMunicipalities(); }
     if (routeInfo.page === "municipality-detail") await loadMunicipalityDetail(routeInfo.slug);
     if (routeInfo.page === "people") { setBreadcrumbs([{ label: "Base de pessoas" }]); renderPeoplePage(); }
     if (routeInfo.page === "launches") { setBreadcrumbs([{ label: "Simulador de urna" }]); await loadLaunchesPage(); }
-    if (routeInfo.page === "sources") { setBreadcrumbs([{ label: "Fontes e metodologia" }]); await loadSourceHealthCards(); }
   } catch (error) {
     toast(error.message || "Não foi possível carregar esta área.");
   }
 }
 
 function fillOfficeSelects() {
-  ["overviewOffice", "overviewPartyOffice", "candidateOffice", "partyOffice", "simOffice"].forEach(id => {
+  ["candidateOffice", "simOffice"].forEach(id => {
     const el = $("#" + id); if (!el) return;
     el.innerHTML = Object.entries(offices).map(([key, label]) => `<option value="${esc(key)}">${esc(label)}</option>`).join("");
   });
-  if ($("#overviewOffice")) $("#overviewOffice").value = state.office;
-  if ($("#overviewPartyOffice")) $("#overviewPartyOffice").value = state.office;
   if ($("#candidateOffice")) $("#candidateOffice").value = state.office;
-  if ($("#partyOffice")) $("#partyOffice").value = state.partyOffice;
   if ($("#simOffice")) $("#simOffice").value = state.office;
 }
 
 function fillMunicipalitySelect() {
   const html = municipalities.map(([name, code]) => `<option value="${esc(name)}">${esc(name)} — IBGE ${esc(code)}</option>`).join("");
-  ["sectionMunicipality", "neighborhoodMunicipality", "simMunicipality"].forEach(id => {
+  ["sectionMunicipality", "simMunicipality"].forEach(id => {
     const el = $("#" + id); if (!el) return; el.innerHTML = html; el.value = state.municipality;
   });
   const list = $("#municipalityNames"); if (list) list.innerHTML = municipalities.map(([name]) => `<option value="${esc(name)}"></option>`).join("");
@@ -218,41 +206,34 @@ function renderBarChart(root, items, labelKey, valueKey, maxItems = 15) {
 }
 
 async function loadOverview(refresh = false) {
-  const officeChart = $("#officeChart"), partyChart = $("#partyChart");
-  if (!state.summary || refresh) {
-    officeChart.innerHTML = ""; partyChart.innerHTML = "";
-    try { state.summary = await api("/api/resumo", { refresh }); }
-    catch (error) { officeChart.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
-  }
-  if (state.summary) {
-    $("#metricCandidates").textContent = formatMaybe(state.summary.totalCandidates);
-    const sections = state.summary.sections || {};
-    $("#metricSections").textContent = sections.deferred ? "sob demanda" : formatMaybe(sections.count);
-    $("#metricZones").textContent = sections.deferred ? "sob demanda" : formatMaybe(sections.zones);
-    $("#metricElectors").textContent = sections.deferred ? "sob demanda" : formatMaybe(sections.electors);
-    $("#metricSourceNote").textContent = sections.deferred ? "território consultado por município" : sections.stale ? "último dado em cache" : "consulta às fontes públicas";
-    renderBarChart(officeChart, state.summary.offices.map(x => ({ label: shortOffices[x.office] || x.label, count: x.count })), "label", "count", 10);
-  }
-  await Promise.all([loadOverviewCandidates(state.office, refresh), loadOverviewPartyChart($("#overviewPartyOffice").value || state.office, refresh)]);
-}
-
-async function loadOverviewCandidates(office = state.office, refresh = false) {
-  const root = $("#overviewCandidates"); root.innerHTML = `<div class="loading">Carregando candidaturas…</div>`;
+  if (!window.CivicaOverview) return;
+  const grid = $("#overviewOfficeGrid");
+  if (grid && (!state.summary || refresh)) grid.innerHTML = `<div class="loading">Montando painel…</div>`;
   try {
-    const data = await getCandidates(office, refresh);
-    root.innerHTML = data.candidates.length ? data.candidates.slice(0, 8).map(c => candidateCard(c, office)).join("") : `<div class="empty">Nenhuma candidatura retornada.</div>`;
-    wireImageFallbacks(root);
-  } catch (error) { root.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
-}
-
-async function loadOverviewPartyChart(office = state.office, refresh = false) {
-  const root = $("#partyChart"); root.innerHTML = "";
-  try {
-    const data = await getCandidates(office, refresh);
-    const counts = aggregateParties(data.candidates);
-    $("#partyChartLabel").textContent = officeLabel(office);
-    renderBarChart(root, counts.map(x => ({ label: x.party, count: x.count })), "label", "count", 12);
-  } catch (error) { root.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
+    if (!state.summary || refresh) {
+      state.summary = await api("/api/resumo", { refresh });
+      if (refresh) state.candidateData.clear();
+    }
+    if (!state.health || refresh) await checkSources(refresh);
+    CivicaOverview.bind({
+      state,
+      offices,
+      fmt,
+      esc,
+      formatDate,
+      formatMaybe,
+      officeLabel,
+      getCandidates,
+      candidateCard,
+      wireImageFallbacks,
+      renderBarChart,
+      getSimulationStore: () => loadSimulationStore()
+    });
+    await CivicaOverview.render(state.summary, state.health, refresh);
+  } catch (error) {
+    if (grid) grid.innerHTML = `<div class="error">${esc(error.message)}</div>`;
+    toast(error.message || "Não foi possível carregar o painel inicial.");
+  }
 }
 
 function aggregateParties(candidates) {
@@ -347,36 +328,6 @@ async function loadCandidateDetail(office, id) {
   } catch (error) { root.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
 }
 
-async function loadPartiesPage(refresh = false) {
-  state.partyOffice = $("#partyOffice").value || state.partyOffice;
-  const root = $("#partyGrid"); root.innerHTML = `<div class="loading">Carregando partidos…</div>`;
-  try {
-    const data = await getCandidates(state.partyOffice, refresh);
-    renderPartyGrid(aggregateParties(data.candidates));
-  } catch (error) { root.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
-}
-
-function renderPartyGrid(parties) {
-  const q = normalize(state.partySearch);
-  const list = parties.filter(p => !q || normalize(`${p.party} ${p.partyName}`).includes(q));
-  $("#partyGrid").innerHTML = list.length ? list.map(p => {
-    const path = `/partidos/${encodeURIComponent(state.partyOffice)}/${encodeURIComponent(p.party)}`;
-    return `<a class="party-card" href="${path}" data-route="${path}"><div class="sigla">${esc(p.party)}</div><p>${esc(p.partyName || "Nome não informado")}</p><div class="party-count">${fmt.format(p.count)} candidatura${p.count === 1 ? "" : "s"}</div></a>`;
-  }).join("") : `<div class="empty">Nenhum partido encontrado.</div>`;
-}
-
-async function loadPartyDetail(office, party) {
-  setBreadcrumbs([{ label: "Partidos", path: "/partidos" }, { label: party }]);
-  const root = $("#partyDetail"); root.innerHTML = `<div class="loading">Carregando partido…</div>`;
-  try {
-    const data = await getCandidates(office); const list = data.candidates.filter(c => normalize(c.party) === normalize(party));
-    if (!list.length) { root.innerHTML = `<div class="error">Nenhuma candidatura encontrada para esta sigla e cargo.</div>`; return; }
-    const partyName = list.find(c => c.partyName)?.partyName || "";
-    root.innerHTML = `<div class="page-head"><div><span class="eyebrow">${esc(officeLabel(office).toUpperCase())}</span><h1>${esc(party)}</h1><p>${esc(partyName)} · ${fmt.format(list.length)} candidatura${list.length === 1 ? "" : "s"}</p></div></div><div class="data-meta">${dataMeta(data)}</div><div class="candidate-grid party-candidates">${list.map(c => candidateCard(c, office)).join("")}</div>`;
-    wireImageFallbacks(root);
-  } catch (error) { root.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
-}
-
 async function loadSectionsPage(refresh = false) {
   state.municipality = $("#sectionMunicipality").value || state.municipality;
   $("#sectionsBody").innerHTML = `<tr><td colspan="7">Carregando zonas, seções e locais oficiais…</td></tr>`;
@@ -412,27 +363,6 @@ function renderSections(data) {
   renderPagination($("#sectionPagination"), f.page, totalPages, page => { f.page = page; renderSections(data); });
 }
 
-async function loadNeighborhoodsPage(refresh = false) {
-  const select = $("#neighborhoodMunicipality"); state.municipality = select?.value || state.municipality;
-  $("#neighborhoodBody").innerHTML = `<tr><td colspan="5">Carregando bairros…</td></tr>`;
-  $("#locationsBody").innerHTML = `<tr><td colspan="7">Carregando locais…</td></tr>`;
-  try { const data = await getSections(state.municipality, refresh); renderNeighborhoods(data); }
-  catch (error) { const row = `<tr><td colspan="7" class="error">${esc(error.message)}</td></tr>`; $("#locationsBody").innerHTML=row; $("#neighborhoodBody").innerHTML=`<tr><td colspan="5" class="error">${esc(error.message)}</td></tr>`; }
-}
-
-function renderNeighborhoods(data) {
-  const q = normalize(state.neighborhoodSearch);
-  const neighborhoods = (data.neighborhoods || []).filter(x => !q || normalize(`${x.bairro} ${(x.zonas||[]).join(" ")}`).includes(q));
-  const locations = (data.locations || []).filter(x => !q || normalize(`${x.bairro} ${x.nome} ${x.endereco} ${x.cep} ${x.zona}`).includes(q));
-  $("#bairroMetric").textContent = fmt.format(data.neighborhoodCount || 0);
-  $("#localMetric").textContent = fmt.format(data.locationCount || 0);
-  $("#bairroSectionMetric").textContent = fmt.format(data.count || 0);
-  $("#bairroElectorMetric").textContent = fmt.format(data.eleitores || 0);
-  $("#neighborhoodMeta").innerHTML = dataMeta(data);
-  $("#neighborhoodBody").innerHTML = neighborhoods.length ? neighborhoods.map(x => `<tr><td><b>${esc(x.bairro)}</b></td><td>${esc((x.zonas||[]).join(", ") || "—")}</td><td>${fmt.format(x.locais || 0)}</td><td>${fmt.format(x.secoes || 0)}</td><td>${fmt.format(x.eleitores || 0)}</td></tr>`).join("") : `<tr><td colspan="5">Nenhum bairro encontrado.</td></tr>`;
-  $("#locationsBody").innerHTML = locations.length ? locations.map(x => `<tr><td>${esc(x.bairro || "—")}</td><td>${esc(x.zona || "—")}</td><td><b>${esc(x.nome || "—")}</b></td><td>${esc(x.endereco || "—")}</td><td>${esc(x.cep || "—")}</td><td>${esc((x.secoes||[]).join(", ") || "—")}</td><td>${fmt.format(x.eleitores || 0)}</td></tr>`).join("") : `<tr><td colspan="7">Nenhum local encontrado.</td></tr>`;
-}
-
 function renderMunicipalities(term = $("#municipalitySearch")?.value || "") {
   const q = normalize(term);
   const list = municipalities.filter(([name, code]) => !q || normalize(`${name} ${code}`).includes(q));
@@ -451,7 +381,7 @@ async function loadMunicipalityDetail(slug) {
   const root = $("#municipalityDetail"); root.innerHTML = `<div class="loading">Carregando ficha de ${esc(name)}…</div>`;
   try {
     const data = await getSections(name);
-    root.innerHTML = `<div class="page-head"><div><span class="eyebrow">MUNICÍPIO • IBGE ${esc(code)}</span><h1>${esc(name)}</h1><p>Ficha territorial baseada no arquivo oficial de locais de votação de 2026.</p></div><div class="toolbar"><button class="btn ghost" id="printMunicipality">Imprimir / PDF</button><button class="btn secondary" id="openMunicipalitySections">Ver zonas e seções</button><button class="btn secondary" id="openMunicipalityNeighborhoods">Ver bairros e locais</button></div></div>
+    root.innerHTML = `<div class="page-head"><div><span class="eyebrow">MUNICÍPIO • IBGE ${esc(code)}</span><h1>${esc(name)}</h1><p>Ficha territorial baseada no arquivo oficial de locais de votação de 2026.</p></div><div class="toolbar"><button class="btn ghost" id="printMunicipality">Imprimir / PDF</button><button class="btn secondary" id="openMunicipalitySections">Ver zonas e seções</button><a class="btn secondary" href="/lancamentos" data-route="/lancamentos">Simular votos neste município</a></div></div>
       <div class="metrics five"><article><span>Seções</span><strong>${fmt.format(data.count || 0)}</strong></article><article><span>Zonas</span><strong>${fmt.format(data.zoneCount || 0)}</strong></article><article><span>Bairros</span><strong>${fmt.format(data.neighborhoodCount || 0)}</strong></article><article><span>Locais</span><strong>${fmt.format(data.locationCount || 0)}</strong></article><article><span>Eleitores agregados</span><strong>${fmt.format(data.eleitores || 0)}</strong></article></div>
       <div class="data-meta">${dataMeta(data)}</div>
       <div class="zone-cards">${(data.zones||[]).map(z => `<div class="zone-card"><strong>Zona ${z.zona}</strong><span>${fmt.format(z.secoes)} seções · ${fmt.format(z.bairros || 0)} bairros · ${fmt.format(z.locais || 0)} locais</span></div>`).join("")}</div>
@@ -459,7 +389,7 @@ async function loadMunicipalityDetail(slug) {
       <section class="panel"><div class="panel-head"><div><h2>Locais de votação</h2><p>Primeiros locais publicados para o município.</p></div></div><div class="table-wrap"><table><thead><tr><th>Bairro</th><th>Zona</th><th>Local</th><th>Endereço</th></tr></thead><tbody>${(data.locations||[]).slice(0,30).map(x => `<tr><td>${esc(x.bairro||"—")}</td><td>${esc(x.zona||"—")}</td><td>${esc(x.nome||"—")}</td><td>${esc(x.endereco||"—")}</td></tr>`).join("")}</tbody></table></div></section></div>`;
     $("#printMunicipality").onclick = () => window.print();
     $("#openMunicipalitySections").onclick = () => { state.municipality = name; $("#sectionMunicipality").value = name; state.sectionFilters = { zone: "", search: "", page: 1, pageSize: 50 }; navigate("/zonas"); };
-    $("#openMunicipalityNeighborhoods").onclick = () => { state.municipality = name; $("#neighborhoodMunicipality").value = name; navigate("/bairros"); };
+    root.querySelector("[data-route='/lancamentos']")?.addEventListener("click", () => { state.municipality = name; if ($("#simMunicipality")) $("#simMunicipality").value = name; if ($("#progMunicipality")) $("#progMunicipality").value = name; });
   } catch (error) { root.innerHTML = `<div class="error">${esc(error.message)}</div>`; }
 }
 
@@ -474,13 +404,6 @@ async function checkSources(refresh = false) {
   } catch {
     const dot = $(".status-dot", root); dot.className = "status-dot neutral"; $("span:last-child", root).textContent = "Verificação temporariamente indisponível";
   }
-}
-
-async function loadSourceHealthCards() {
-  if (!state.health) await checkSources();
-  const h = state.health || {};
-  const card = (title, data) => `<div class="health-card"><div><b>${esc(title)}</b><span>Verificado em ${esc(formatDate(h.checkedAt))}</span>${data?.transport ? `<span>${esc(data.transport)}</span>` : ""}${data?.error ? `<span>${esc(data.error)}</span>` : ""}</div><span class="health-state ${data?.ok ? "good" : "neutral"}">${data?.ok ? "ACESSÍVEL" : "VERIFICAÇÃO INDISPONÍVEL"}</span></div>`;
-  $("#sourceHealthCards").innerHTML = card("Candidaturas — TSE", h.candidates) + card("Locais de votação — TSE", h.electorate);
 }
 
 const LAUNCH_STORAGE_KEY = "civica-ma-lancamentos-v1";
@@ -508,9 +431,6 @@ function saveSimulationStore() { try { localStorage.setItem(LAUNCH_STORAGE_KEY, 
 function activeScenario() { const store = loadSimulationStore(); return store.scenarios.find(x => x.id === store.activeId) || store.scenarios[0]; }
 function renderScenarioSelect() { const store=loadSimulationStore(),el=$("#simScenario"); if(!el)return; el.innerHTML=store.scenarios.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join(""); el.value=store.activeId; }
 function createScenario(name) { const store=loadSimulationStore(),clean=String(name||"").trim();if(!clean)return; const x={id:newId("controle"),name:clean.slice(0,60),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),entries:[]};store.scenarios.push(x);store.activeId=x.id;saveSimulationStore();renderScenarioSelect();renderSimulation(); }
-function simulationEntriesForOffice() { const office=$("#simOffice")?.value||state.office; return (activeScenario()?.entries||[]).filter(x=>String(x.office)===String(office)); }
-function simulationVoteTypes(office) { const proportional=["6","7"].includes(String(office)); return [{value:"candidate",label:"Lançamento nominal em candidatura"},...(proportional?[{value:"legend",label:"Lançamento de legenda"}]:[]),{value:"blank",label:"Branco"},{value:"null",label:"Nulo"}]; }
-
 async function populateSimulationCandidates() {
   const office = $("#simOffice").value || state.office;
   const candidateEl = $("#simCandidate");
@@ -581,13 +501,6 @@ async function loadLaunchesPage() {
   }
 }
 
-function addSimulationEntry() {
-  const scenario=activeScenario();if(!scenario)return;const office=$("#simOffice").value,municipality=$("#simMunicipality").value,neighborhood=$("#simNeighborhood").value,zone=$("#simZone").value,section=$("#simSection").value,type=$("#simVoteType").value;if(!municipality)return toast("Selecione o município.");
-  let candidateId="",candidateName="",candidateNumber="",party="",partyName="";const data=state.candidateData.get(String(office));
-  if(type==="candidate"){const id=$("#simCandidate").value,c=data?.candidates?.find(x=>String(x.id||x.number)===String(id));if(!c)return toast("Selecione uma candidatura.");candidateId=String(c.id||c.number);candidateName=c.name||c.fullName||"";candidateNumber=c.number||"";party=c.party||"";partyName=c.partyName||"";}
-  if(type==="legend"){party=$("#simParty").value;if(!party)return toast("Selecione o partido.");partyName=$("#simParty").selectedOptions[0]?.dataset?.name||"";}
-  const entry={id:newId("lanc"),at:new Date().toISOString(),office,officeLabel:officeLabel(office),municipality,neighborhood:neighborhood||"",zone:zone||"",section:section||"",type,candidateId,candidateName,candidateNumber,party,partyName,quantity:1,note:$("#simNote").value.trim().slice(0,120)};scenario.entries.push(entry);scenario.updatedAt=new Date().toISOString();saveSimulationStore();$("#simNote").value="";renderSimulation();toast("1 lançamento registrado.");
-}
 function entryWeight(e){const n=Number(e?.quantity);return Number.isFinite(n)&&n>0?Math.floor(n):1;}
 function aggregateSimulation(entries) {
   const municipalitiesMap = new Map(), candidatesMap = new Map(), zonesMap = new Map(), sectionsMap = new Map();
@@ -685,6 +598,7 @@ function renderSimulation() {
     renderLiveTotals();
   });
   renderLiveTotals();
+  if ($("#metricSimVotes")) $("#metricSimVotes").textContent = fmt.format((activeScenario()?.entries || []).length);
 }
 function exportSimulationCsv(){const scenario=activeScenario(),entries=scenario?.entries||[];exportCsv(`lancamentos-${slugify(scenario?.name||"controle")}.csv`,["Data/hora","Cargo","Município","Bairro","Zona","Seção","Tipo","Candidatura","Número","Partido","Observação"],entries.map(e=>[e.at,e.officeLabel||officeLabel(e.office),e.municipality,e.neighborhood||"",e.zone,e.section,e.type,e.candidateName,e.candidateNumber,e.party,e.note]));}
 function exportSimulationJson(){const scenario=activeScenario();downloadFile(`lancamentos-${slugify(scenario?.name||"controle")}.json`,JSON.stringify({app:"Cívica MA",kind:"manual-launches",exportedAt:new Date().toISOString(),scenario},null,2),"application/json;charset=utf-8");}
@@ -756,23 +670,22 @@ function bindEvents() {
   window.addEventListener("popstate", route);
   $("#menuBtn").onclick = () => $("#sidebar").classList.contains("open") ? closeSidebar() : openSidebar();
   $("#sidebarBackdrop").onclick = closeSidebar;
-  $("#overviewOffice").onchange = async e => { state.office = e.target.value; $("#candidateOffice").value = state.office; await loadOverviewCandidates(state.office); };
-  $("#overviewPartyOffice").onchange = e => loadOverviewPartyChart(e.target.value);
-  $("#candidateOffice").onchange = async e => { state.office = e.target.value; $("#overviewOffice").value = state.office; state.candidateFilters = { party: "", status: "", search: "", sort: "name", page: 1, pageSize: 24 }; $("#candidateSearch").value = ""; await loadCandidatePage(); };
+  $("#candidateOffice").onchange = async e => {
+    state.office = e.target.value;
+    if ($("#overviewOffice")) $("#overviewOffice").value = state.office;
+    state.candidateFilters = { party: "", status: "", search: "", sort: "name", page: 1, pageSize: 24 };
+    $("#candidateSearch").value = "";
+    await loadCandidatePage();
+  };
   $("#candidateParty").onchange = e => { state.candidateFilters.party = e.target.value; state.candidateFilters.page = 1; renderCandidateCatalog(); };
   $("#candidateStatus").onchange = e => { state.candidateFilters.status = e.target.value; state.candidateFilters.page = 1; renderCandidateCatalog(); };
   $("#candidateSearch").oninput = e => { state.candidateFilters.search = e.target.value; state.candidateFilters.page = 1; renderCandidateCatalog(); };
   $("#candidateSort").onchange = e => { state.candidateFilters.sort = e.target.value; state.candidateFilters.page = 1; renderCandidateCatalog(); };
-  $("#partyOffice").onchange = e => { state.partyOffice = e.target.value; loadPartiesPage(); };
-  $("#partySearch").oninput = e => { state.partySearch = e.target.value; const data = state.candidateData.get(state.partyOffice); if (data) renderPartyGrid(aggregateParties(data.candidates)); };
   $("#sectionMunicipality").onchange = e => { state.municipality = e.target.value; state.sectionFilters = { zone: "", search: "", page: 1, pageSize: 50 }; loadSectionsPage(); };
   $("#sectionZone").onchange = e => { state.sectionFilters.zone = e.target.value; state.sectionFilters.page = 1; const data = state.sectionData.get(state.municipality); if (data) renderSections(data); };
   $("#sectionSearch").oninput = e => { state.sectionFilters.search = e.target.value; state.sectionFilters.page = 1; const data = state.sectionData.get(state.municipality); if (data) renderSections(data); };
-  $("#neighborhoodMunicipality").onchange = e => { state.municipality=e.target.value; state.neighborhoodSearch="";$("#neighborhoodSearch").value="";loadNeighborhoodsPage(); };
-  $("#neighborhoodSearch").oninput = e => { state.neighborhoodSearch=e.target.value; const data=state.sectionData.get(state.municipality);if(data)renderNeighborhoods(data); };
   $("#municipalitySearch").oninput = e => renderMunicipalities(e.target.value);
-  $("#refreshAll").onclick = async () => { state.summary = null; state.candidateData.clear(); state.sectionData.clear(); await Promise.all([checkSources(true), loadOverview(true)]); toast("Dados consultados novamente."); };
-  $("#printOverview").onclick = () => window.print();
+  $("#refreshAll").onclick = async () => { state.summary = null; state.candidateData.clear(); state.sectionData.clear(); await loadOverview(true); toast("Painel atualizado."); };
   $("#exportCandidatesCsv").onclick = () => { const list = filteredCandidates(); exportCsv(`candidaturas-${state.office}-ma-2026.csv`, ["Nome de urna","Nome completo","Número","Partido","Partido - nome","Situação","Coligação","Federação"], list.map(c => [c.name,c.fullName,c.number,c.party,c.partyName,c.status,c.coalition,c.federation])); };
   $("#exportCandidatesXls").onclick = () => { const list = filteredCandidates(); exportXls(`candidaturas-${state.office}-ma-2026.xls`, ["Nome de urna","Nome completo","Número","Partido","Situação"], list.map(c => [c.name,c.fullName,c.number,c.party,c.status])); };
   $("#exportSectionsCsv").onclick = () => { const data=state.sectionData.get(state.municipality);if(!data)return;const list=filteredSections(data);exportCsv(`secoes-${slugify(state.municipality)}-2026.csv`,["Município","Bairro do local","Zona","Seção","Local de votação","Endereço","CEP","Eleitores","Acessibilidade"],list.map(x=>[x.municipio,x.bairro,x.zona,x.secao,x.localNome,x.endereco,x.cep,x.eleitores,x.acessibilidade])); };

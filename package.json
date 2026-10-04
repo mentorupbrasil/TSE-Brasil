@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Portal independente de consulta a dados públicos eleitorais do Maranhão nas Eleições 2026.",
   "scripts": {
-    "check": "node --check assets/app.js && node --check assets/simulator.js && node --check data/municipalities.js && node --check data/election.js && node --check api/candidatos.js && node --check api/secoes.js && node --check api/status.js && node --check api/resumo.js && node --check api/busca.js && node --check lib/tse.js"
+    "check": "node --check assets/app.js && node --check assets/simulator.js && node --check assets/overview.js && node --check data/municipalities.js && node --check data/election.js && node --check api/candidatos.js && node --check api/secoes.js && node --check api/status.js && node --check api/resumo.js && node --check api/busca.js && node --check api/territorio.js && node --check lib/tse.js"
   },
   "engines": {
     "node": ">=18"
