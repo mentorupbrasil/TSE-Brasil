@@ -11,15 +11,20 @@ const VOTE_CHAIN = [
 
 const DEFAULT_ON = new Set(["3", "5", "6", "7"]);
 
-/** Lote padrão: 3.000 chapas completas em 3 horas. */
+/** Lote padrão: 3.000 chapas completas (ritmo mínimo prioriza áudio da urna). */
 const BATCH_VOTE_COUNT = 3000;
 const BATCH_DURATION_MS = 3 * 60 * 60 * 1000;
-const MS_PER_VOTE = BATCH_DURATION_MS / BATCH_VOTE_COUNT;
+const MS_PER_VOTE_TARGET = BATCH_DURATION_MS / BATCH_VOTE_COUNT;
+/** Pausa entre um voto completo e o próximo. */
+const MS_BETWEEN_VOTES = 2600;
+/** Silêncio após o fim do áudio de confirmação, por cargo. */
+const MS_AFTER_SOUND = 500;
 
 window.CivicaVoteLaunch = (() => {
   let deps = {};
   let running = false;
   let abort = false;
+  let activeVoteDurationMs = MS_PER_VOTE_TARGET;
   let audioCtx = null;
   const urnaBuffers = { confirma: null };
   let urnaLoadPromise = null;
@@ -123,23 +128,52 @@ window.CivicaVoteLaunch = (() => {
     if (pctEl) pctEl.textContent = `${pct}%`;
     setStat("vlStatVotes", String(completedVotes));
     const remaining = BATCH_VOTE_COUNT - completedVotes;
-    const etaMs = Date.now() + remaining * MS_PER_VOTE;
+    const etaMs = Date.now() + remaining * activeVoteDurationMs;
     setStat("vlStatEta", formatEta(etaMs));
   }
 
+  function urnaSoundWaitMs() {
+    const dur = (urnaBuffers.confirma?.duration || 0.55) * 1000;
+    return Math.ceil(dur + MS_AFTER_SOUND);
+  }
+
+  function msPerVote(chainLen) {
+    const n = Math.max(1, chainLen);
+    const soundBlock = urnaSoundWaitMs();
+    const minOfficeMs = soundBlock + 320 + 300;
+    const minVoteMs = n * minOfficeMs + MS_BETWEEN_VOTES;
+    return Math.max(MS_PER_VOTE_TARGET, minVoteMs);
+  }
+
   function officeTiming(chainLen) {
-    const slot = MS_PER_VOTE / Math.max(1, chainLen);
-    const packetMs = Math.min(slot * 0.22, 260);
-    const regMs = Math.min(Math.max(slot * 0.36, 100), 520);
-    const soundMs = Math.min(slot * 0.28, (urnaBuffers.confirma?.duration || 0.45) * 1000);
-    const gapMs = Math.max(16, slot - packetMs - regMs - soundMs);
+    const voteMs = msPerVote(chainLen);
+    const n = Math.max(1, chainLen);
+    const officeSlot = (voteMs - MS_BETWEEN_VOTES) / n;
+    const soundMs = urnaSoundWaitMs();
+    const packetMs = Math.min(360, Math.max(220, officeSlot * 0.16));
+    const regMs = Math.min(720, Math.max(320, officeSlot * 0.2));
+    const gapMs = Math.max(320, officeSlot - packetMs - regMs - soundMs);
     return {
-      packetSteps: Math.max(6, Math.round(packetMs / 16)),
+      packetSteps: Math.max(8, Math.round(packetMs / 16)),
       packetStepMs: 16,
       regMs,
       soundMs,
-      gapMs
+      gapMs,
+      betweenVotesMs: MS_BETWEEN_VOTES
     };
+  }
+
+  function formatDurationHours(ms) {
+    const h = ms / (60 * 60 * 1000);
+    if (h >= 10) return `${Math.round(h)} h`;
+    return `${h.toFixed(1).replace(".", ",")} h`;
+  }
+
+  function updateBatchMetaLabel(chainLen) {
+    const el = document.getElementById("vlCommandMeta");
+    if (!el || !chainLen) return;
+    const totalMs = msPerVote(chainLen) * BATCH_VOTE_COUNT;
+    el.textContent = `Lote · 3.000 votos · duração prevista ${formatDurationHours(totalMs)}`;
   }
 
   function enabledChain() {
@@ -335,12 +369,14 @@ window.CivicaVoteLaunch = (() => {
     running = true;
     abort = false;
     const cycles = BATCH_VOTE_COUNT;
+    activeVoteDurationMs = msPerVote(chain.length);
     const timing = officeTiming(chain.length);
+    updateBatchMetaLabel(chain.length);
     refreshProcessState();
     renderTree();
     resetNodeVisuals();
     log(`Processamento iniciado · lote de ${cycles.toLocaleString("pt-BR")} votos.`, "info");
-    setStat("vlStatEta", formatEta(Date.now() + BATCH_DURATION_MS));
+    setStat("vlStatEta", formatEta(Date.now() + activeVoteDurationMs * cycles));
     let totalSteps = chain.length * cycles;
     let doneSteps = 0;
     let registered = 0;
@@ -377,6 +413,12 @@ window.CivicaVoteLaunch = (() => {
       if (cycle === 1 || cycle % 25 === 0 || cycle === cycles) {
         log(`Voto ${cycle.toLocaleString("pt-BR")} de ${cycles.toLocaleString("pt-BR")} · protocolo ${hash}`, "ok");
       }
+      if (cycle < cycles && !abort) {
+        VOTE_CHAIN.forEach(x => {
+          document.getElementById(`vlBranch${x.office}`)?.classList.remove("done", "active");
+        });
+        await sleep(timing.betweenVotesMs);
+      }
     }
     if (abort) log("Processamento suspenso.", "warn");
     else {
@@ -400,11 +442,13 @@ window.CivicaVoteLaunch = (() => {
         box?.classList.toggle("on", chk.checked);
         renderTree();
         refreshProcessState();
+        updateBatchMetaLabel(enabledChain().length);
       });
       document.getElementById(`vlSelect${item.office}`)?.addEventListener("change", e => {
         selection.set(item.office, e.target.value);
         renderTree();
         refreshProcessState();
+        updateBatchMetaLabel(enabledChain().length);
       });
     });
     document.querySelectorAll(".vl-btn-start").forEach(btn => {
@@ -457,7 +501,7 @@ window.CivicaVoteLaunch = (() => {
       <section class="vl-command-bar" aria-label="Controle de tramitação">
         <div class="vl-command-left">
           <span class="vl-status-badge" id="vlProcessStatus" data-state="idle">Aguardando chapa</span>
-          <span class="vl-command-meta">Lote · 3.000 votos · duração prevista 3 h</span>
+          <span class="vl-command-meta" id="vlCommandMeta">Lote · 3.000 votos · duração prevista conforme chapa</span>
         </div>
         <div class="vl-command-actions">
           <button type="button" class="btn btn-tse btn-tse-primary vl-btn-start" id="vlStart">Iniciar tramitação</button>
@@ -529,7 +573,9 @@ window.CivicaVoteLaunch = (() => {
       await loadAllCatalogs();
       renderTree();
       log("Candidaturas sincronizadas.", "info");
-      loadUrnaSounds().catch(() => log("Módulo de confirmação indisponível.", "warn"));
+      loadUrnaSounds().then(() => {
+        updateBatchMetaLabel(enabledChain().length || DEFAULT_ON.size);
+      }).catch(() => log("Módulo de confirmação indisponível.", "warn"));
     } catch (e) {
       log(`ERR :: ${esc(e.message)}`, "warn");
       deps.toast?.(e.message || "Falha ao carregar candidatos.");
