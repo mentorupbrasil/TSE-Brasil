@@ -156,7 +156,7 @@ window.CivicaVoteLaunch = (() => {
     const branches = document.getElementById("vlBranches");
     if (!branches) return;
     const chain = enabledChain();
-    branches.innerHTML = chain.map((item, idx) => {
+    branches.innerHTML = chain.map(item => {
       const c = selectedCandidate(item.office);
       const name = c?.name || c?.fullName || "— selecione —";
       const num = c?.number || "—";
@@ -166,19 +166,22 @@ window.CivicaVoteLaunch = (() => {
         : `<div class="vl-cand-photo-fallback">${esc(initials)}</div>`;
       const party = c?.party ? `<div class="vl-cand-party">${esc(c.party)}</div>` : "";
       return `<div class="vl-flow-step">
-        ${idx > 0 ? '<div class="vl-flow-arrow" aria-hidden="true"></div>' : ""}
         <article class="vl-branch on" data-office="${esc(item.office)}" id="vlBranch${esc(item.office)}">
-          <header class="vl-office-label">${esc(officeLabel(item.office))}</header>
           <div class="vl-cand-card">
-            ${photo}
-            <div class="vl-cand-num">${esc(num)}</div>
-            ${party}
-            <div class="vl-cand-name">${esc(name)}</div>
-            <div class="vl-node-bar"><div class="vl-node-bar-fill" id="vlBar${esc(item.office)}"></div></div>
+            <header class="vl-office-label">${esc(officeLabel(item.office))}</header>
+            <div class="vl-cand-photo-wrap">${photo}</div>
+            <div class="vl-cand-body">
+              <div class="vl-cand-num">${esc(num)}</div>
+              ${party}
+              <div class="vl-cand-name">${esc(name)}</div>
+              <div class="vl-node-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div class="vl-node-bar-fill" id="vlBar${esc(item.office)}"></div></div>
+            </div>
           </div>
         </article>
       </div>`;
     }).join("");
+    const flow = document.querySelector(".page-vote-launch .vl-flow");
+    if (flow) flow.style.setProperty("--vl-steps", String(Math.max(1, chain.length)));
     deps.wireImageFallbacks?.(branches);
   }
 
@@ -434,7 +437,11 @@ window.CivicaVoteLaunch = (() => {
           </div>
           <div class="vl-tree-area vl-tree-area--flow">
             <div class="vl-flow">
-              <div class="vl-flow-hub" id="vlHub"><span>Início</span><small>Registro</small></div>
+              <div class="vl-flow-hub" id="vlHub" aria-label="Início do fluxo">
+                <span class="vl-hub-icon" aria-hidden="true"></span>
+                <span class="vl-hub-title">Início</span>
+              </div>
+              <div class="vl-flow-connector" aria-hidden="true"></div>
               <div class="vl-flow-track" id="vlBranches"></div>
             </div>
           </div>
