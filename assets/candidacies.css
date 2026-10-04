@@ -1,0 +1,738 @@
+/* Candidaturas — padrão visual gov.br / DivulgaCandContas (TSE) */
+
+.candidacy-page {
+  --tse-blue: #1351b4;
+  --tse-blue-dark: #071d41;
+  --tse-blue-light: #dbe8fb;
+  --tse-green: #168821;
+  --tse-green-bg: #e3f5e8;
+  --tse-warn: #a66a12;
+  --tse-warn-bg: #fff5e6;
+  --tse-gray-10: #f8f9fa;
+  --tse-gray-20: #ececec;
+  --tse-gray-40: #cccccc;
+  --tse-gray-80: #333333;
+  --tse-gray-90: #555555;
+  --tse-focus: #2670e8;
+}
+
+.candidacy-page .icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  fill: currentColor;
+}
+
+.candidacy-page .tse-page-header {
+  background: #fff;
+  border: 1px solid var(--tse-gray-40);
+  border-left: 4px solid var(--tse-blue);
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.candidacy-page .tse-page-header .eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--tse-blue);
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+.candidacy-page .tse-page-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--tse-blue-dark);
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.candidacy-page .tse-page-header p {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--tse-gray-90);
+  margin: 0;
+  max-width: 52rem;
+}
+
+.candidacy-page .tse-page-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.candidacy-page .tse-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.candidacy-page .btn-tse,
+.candidacy-page .btn.btn-tse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1.2;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.candidacy-page .btn-tse-primary {
+  background: var(--tse-blue);
+  border-color: var(--tse-blue);
+  color: #fff;
+}
+
+.candidacy-page .btn-tse-primary:hover {
+  background: #0c3269;
+  border-color: #0c3269;
+  color: #fff;
+}
+
+.candidacy-page .btn-tse-secondary {
+  background: #fff;
+  border-color: var(--tse-blue);
+  color: var(--tse-blue);
+}
+
+.candidacy-page .btn-tse-secondary:hover {
+  background: var(--tse-blue-light);
+}
+
+.candidacy-page .btn-tse-ghost {
+  background: transparent;
+  border-color: var(--tse-gray-40);
+  color: var(--tse-gray-80);
+}
+
+.candidacy-page .btn-tse-ghost:hover {
+  border-color: var(--tse-blue);
+  color: var(--tse-blue);
+  background: #fff;
+}
+
+.candidacy-page .btn-tse-link {
+  background: transparent;
+  border: none;
+  color: var(--tse-blue);
+  padding: 0.25rem 0;
+  min-height: auto;
+  font-weight: 600;
+}
+
+.candidacy-page .btn-tse-link:hover {
+  text-decoration: underline;
+}
+
+.candidacy-page .tse-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--tse-gray-40);
+  background: #fff;
+}
+
+.candidacy-page .tse-stats article {
+  padding: 1rem 1.25rem;
+  border-right: 1px solid var(--tse-gray-20);
+  border-radius: 0;
+  box-shadow: none;
+  min-width: 0;
+}
+
+.candidacy-page .tse-stats article:last-child {
+  border-right: none;
+}
+
+.candidacy-page .tse-stats span {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tse-gray-90);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.candidacy-page .tse-stats strong {
+  display: block;
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: var(--tse-blue-dark);
+  margin: 0.35rem 0 0.15rem;
+  letter-spacing: -0.03em;
+}
+
+.candidacy-page .tse-stats small {
+  font-size: 0.6875rem;
+  color: var(--tse-gray-90);
+}
+
+.candidacy-page .tse-panel {
+  background: #fff;
+  border: 1px solid var(--tse-gray-40);
+  margin-bottom: 1rem;
+}
+
+.candidacy-page .tse-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--tse-gray-10);
+  border-bottom: 1px solid var(--tse-gray-40);
+}
+
+.candidacy-page .tse-panel-head h2 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--tse-blue-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.candidacy-page .tse-form-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  padding: 1.25rem;
+  align-items: end;
+}
+
+.candidacy-page .tse-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.candidacy-page .tse-field-span2 {
+  grid-column: span 2;
+}
+
+.candidacy-page .tse-field label,
+.candidacy-page .tse-field .tse-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--tse-gray-80);
+}
+
+.candidacy-page .tse-field select,
+.candidacy-page .tse-field input {
+  min-height: 2.5rem;
+  border: 1px solid var(--tse-gray-40);
+  border-radius: 0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background: #fff;
+}
+
+.candidacy-page .tse-field select:focus,
+.candidacy-page .tse-field input:focus {
+  border-color: var(--tse-focus);
+  outline: 2px solid rgba(38, 112, 232, 0.25);
+  outline-offset: 0;
+}
+
+.candidacy-page .data-meta,
+.candidacy-page .summary-line {
+  font-size: 0.75rem;
+  color: var(--tse-gray-90);
+  margin: 0.5rem 0 0.75rem;
+}
+
+.candidacy-page .tse-result-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  background: var(--tse-blue-light);
+  border: 1px solid #c5d4eb;
+  margin-bottom: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--tse-blue-dark);
+}
+
+.candidacy-page .candidate-grid.tse-candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--tse-gray-40);
+  border-top: none;
+  background: #fff;
+}
+
+.candidacy-page .tse-candidate-card {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  gap: 1.25rem;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid var(--tse-gray-20);
+  transition: background 0.12s;
+}
+
+.candidacy-page .tse-candidate-card:last-child {
+  border-bottom: none;
+}
+
+.candidacy-page .tse-candidate-card:hover,
+.candidacy-page .tse-candidate-card:focus-visible {
+  background: var(--tse-gray-10);
+  outline: none;
+}
+
+.candidacy-page .tse-candidate-card:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--tse-focus);
+}
+
+.candidacy-page .tse-candidate-photo .candidate-photo,
+.candidacy-page .tse-candidate-photo .candidate-photo-fallback {
+  width: 5.5rem;
+  height: 6.75rem;
+  border-radius: 0;
+  border: 1px solid var(--tse-gray-40);
+  object-fit: cover;
+  object-position: top center;
+  background: #e9eef3;
+  box-shadow: none;
+}
+
+.candidacy-page .tse-candidate-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.candidacy-page .tse-candidate-number {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--tse-blue);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.candidacy-page .tse-candidate-name {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--tse-blue-dark);
+}
+
+.candidacy-page .tse-candidate-sub {
+  margin: 0 0 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--tse-gray-90);
+  line-height: 1.4;
+}
+
+.candidacy-page .tse-candidate-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.5rem 1.25rem;
+  margin: 0;
+}
+
+.candidacy-page .tse-candidate-facts > div {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.candidacy-page .tse-candidate-facts dt {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--tse-gray-90);
+  margin: 0;
+}
+
+.candidacy-page .tse-candidate-facts dd {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--tse-gray-80);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.candidacy-page .tse-tag {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-radius: 0;
+  background: var(--tse-gray-20);
+  color: var(--tse-gray-80);
+}
+
+.candidacy-page .tse-tag.good {
+  background: var(--tse-green-bg);
+  color: var(--tse-green);
+}
+
+.candidacy-page .tse-tag.warn {
+  background: var(--tse-warn-bg);
+  color: var(--tse-warn);
+}
+
+.candidacy-page .tse-candidate-go {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--tse-blue);
+  opacity: 0.85;
+}
+
+.candidacy-page .tse-candidate-card:hover .tse-candidate-go {
+  opacity: 1;
+}
+
+.candidacy-page .pagination {
+  margin-top: 1.25rem;
+  gap: 0.25rem;
+}
+
+.candidacy-page .page-btn {
+  border-radius: 0;
+  border-color: var(--tse-gray-40);
+  min-width: 2.5rem;
+  height: 2.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.candidacy-page .page-btn.active {
+  background: var(--tse-blue);
+  border-color: var(--tse-blue);
+}
+
+/* Ficha do candidato */
+.candidacy-page .tse-ficha-back {
+  margin-bottom: 1rem;
+}
+
+.candidacy-page .tse-ficha-banner {
+  background: var(--tse-blue-dark);
+  color: #fff;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 0;
+}
+
+.candidacy-page .tse-ficha-banner .tse-ficha-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.candidacy-page .tse-ficha-banner h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.candidacy-page .tse-ficha-intro {
+  display: grid;
+  grid-template-columns: 9.5rem 1fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid var(--tse-gray-40);
+  border-top: none;
+  align-items: start;
+}
+
+.candidacy-page .tse-ficha-intro .detail-photo,
+.candidacy-page .tse-ficha-intro .detail-photo-fallback {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  max-height: 11.5rem;
+  border-radius: 0;
+  border: 1px solid var(--tse-gray-40);
+  box-shadow: none;
+}
+
+.candidacy-page .tse-ficha-intro-main {
+  min-width: 0;
+}
+
+.candidacy-page .tse-ficha-number-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.candidacy-page .tse-ficha-number {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--tse-blue);
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.candidacy-page .tse-ficha-subname {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--tse-gray-90);
+}
+
+.candidacy-page .tse-ficha-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.candidacy-page .tse-ficha-party {
+  font-size: 0.875rem;
+  margin: 0 0 1rem;
+  color: var(--tse-gray-80);
+}
+
+.candidacy-page .tse-ficha-party strong {
+  font-size: 1rem;
+  color: var(--tse-blue-dark);
+}
+
+.candidacy-page .tse-ficha-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.candidacy-page .tse-ficha-body {
+  border: 1px solid var(--tse-gray-40);
+  border-top: none;
+  background: #fff;
+}
+
+.candidacy-page .tse-ficha-block {
+  border-bottom: 1px solid var(--tse-gray-20);
+}
+
+.candidacy-page .tse-ficha-block:last-child {
+  border-bottom: none;
+}
+
+.candidacy-page .tse-ficha-block-title {
+  margin: 0;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--tse-blue-dark);
+  background: var(--tse-gray-10);
+  border-bottom: 1px solid var(--tse-gray-20);
+}
+
+.candidacy-page .tse-data-table {
+  display: grid;
+}
+
+.candidacy-page .tse-data-row {
+  display: grid;
+  grid-template-columns: minmax(9rem, 32%) 1fr;
+  gap: 1rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--tse-gray-20);
+  font-size: 0.875rem;
+}
+
+.candidacy-page .tse-data-row:last-child {
+  border-bottom: none;
+}
+
+.candidacy-page .tse-data-row:nth-child(even) {
+  background: var(--tse-gray-10);
+}
+
+.candidacy-page .tse-data-label {
+  font-weight: 600;
+  color: var(--tse-gray-90);
+}
+
+.candidacy-page .tse-data-value {
+  font-weight: 600;
+  color: var(--tse-gray-80);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.candidacy-page .notice {
+  border-radius: 0;
+  border: 1px solid #c5d4eb;
+  background: var(--tse-blue-light);
+  color: var(--tse-blue-dark);
+  font-size: 0.8125rem;
+  margin-top: 1rem;
+}
+
+/* Destaques no início — mesma linguagem visual */
+.candidate-list .tse-candidate-card {
+  display: grid;
+  grid-template-columns: 4.25rem 1fr auto;
+  gap: 0.875rem;
+  align-items: center;
+  padding: 0.75rem 0.875rem;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid #ccc;
+  margin-bottom: 0.5rem;
+  background: #fff;
+  transition: background 0.12s;
+}
+
+.candidate-list .tse-candidate-card:hover {
+  background: #f8f9fa;
+}
+
+.candidate-list .tse-candidate-card:last-child {
+  margin-bottom: 0;
+}
+
+.candidate-list .tse-candidate-photo .candidate-photo,
+.candidate-list .tse-candidate-photo .candidate-photo-fallback {
+  width: 4.25rem;
+  height: 5.25rem;
+  border-radius: 0;
+  border: 1px solid #ccc;
+  object-fit: cover;
+  object-position: top;
+}
+
+.candidate-list .tse-candidate-number {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1351b4;
+}
+
+.candidate-list .tse-candidate-name {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #071d41;
+}
+
+.candidate-list .tse-candidate-facts {
+  display: none;
+}
+
+.candidate-list .tse-candidate-sub {
+  display: none;
+}
+
+.candidate-list .tse-candidate-go {
+  color: #1351b4;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.candidate-list .tse-candidate-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.candidacy-page .empty,
+.candidacy-page .loading,
+.candidacy-page .error {
+  border-radius: 0;
+  border: 1px solid var(--tse-gray-40);
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .candidacy-page .tse-form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .candidacy-page .tse-field-span2 {
+    grid-column: span 3;
+  }
+  .candidacy-page .tse-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .candidacy-page .tse-stats article:nth-child(2) {
+    border-right: none;
+  }
+  .candidacy-page .tse-stats article:nth-child(1),
+  .candidacy-page .tse-stats article:nth-child(2) {
+    border-bottom: 1px solid var(--tse-gray-20);
+  }
+}
+
+@media (max-width: 720px) {
+  .candidacy-page .tse-page-header-row {
+    display: block;
+  }
+  .candidacy-page .tse-toolbar {
+    margin-top: 1rem;
+  }
+  .candidacy-page .tse-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .candidacy-page .tse-field-span2 {
+    grid-column: 1 / -1;
+  }
+  .candidacy-page .tse-candidate-card {
+    grid-template-columns: 4.5rem 1fr;
+    gap: 1rem;
+    padding: 0.875rem 1rem;
+  }
+  .candidacy-page .tse-candidate-go {
+    display: none;
+  }
+  .candidacy-page .tse-candidate-photo .candidate-photo,
+  .candidacy-page .tse-candidate-photo .candidate-photo-fallback {
+    width: 4.5rem;
+    height: 5.5rem;
+  }
+  .candidacy-page .tse-ficha-intro {
+    grid-template-columns: 1fr;
+  }
+  .candidacy-page .tse-data-row {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+  .candidacy-page .tse-stats {
+    grid-template-columns: 1fr;
+  }
+  .candidacy-page .tse-stats article {
+    border-right: none;
+    border-bottom: 1px solid var(--tse-gray-20);
+  }
+}

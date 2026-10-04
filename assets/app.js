@@ -56,14 +56,22 @@ function displayValue(value) {
   const text = String(value).trim();
   return text && text !== "—" ? text : "";
 }
+function icon(name) {
+  return `<svg class="icon" aria-hidden="true"><use href="#ico-${name}"/></svg>`;
+}
 function factItem(label, value) {
   const text = displayValue(value);
   if (!text) return "";
-  return `<div class="fact-item"><dt>${esc(label)}</dt><dd>${esc(text)}</dd></div>`;
+  return `<div class="tse-data-row"><div class="tse-data-label">${esc(label)}</div><div class="tse-data-value">${esc(text)}</div></div>`;
 }
 function factSection(title, html) {
   if (!html.trim()) return "";
-  return `<section class="detail-section"><h2>${esc(title)}</h2><dl class="detail-facts">${html}</dl></section>`;
+  return `<section class="tse-ficha-block"><h2 class="tse-ficha-block-title">${esc(title)}</h2><div class="tse-data-table">${html}</div></section>`;
+}
+function statusTag(label, statusText = "") {
+  const text = displayValue(label);
+  if (!text) return "—";
+  return `<span class="tse-tag ${statusClass(statusText || text)}">${esc(text)}</span>`;
 }
 
 async function api(path, { refresh = false } = {}) {
@@ -211,15 +219,24 @@ function candidateCard(candidate, office = state.office) {
   const reg = candidate.registrationStatus || candidate.status;
   const ballot = candidate.ballotStatus && candidate.ballotStatus !== reg ? candidate.ballotStatus : "";
   const coalition = displayValue(candidate.coalition);
-  return `<a class="candidate-card candidate-card-pro" href="${path}" data-route="${path}">
-    <div class="cand-photo-wrap">${photoMarkup(candidate)}</div>
-    <div class="cand-body">
-      <div class="cand-topline"><span class="number">${esc(candidate.number || "—")}</span><span class="status ${statusClass(reg)}">${esc(reg || "Situação não informada")}</span></div>
-      <h3>${esc(candidate.name || candidate.fullName)}</h3>
-      <p class="cand-party"><b>${esc(candidate.party || "Sem sigla")}</b>${candidate.partyName ? `<span>${esc(candidate.partyName)}</span>` : ""}</p>
-      ${ballot ? `<p class="cand-meta-line"><span class="candidacy-chip">${esc(ballot)}</span></p>` : ""}
-      ${coalition ? `<p class="cand-meta-line cand-coalition" title="Coligação">${esc(coalition)}</p>` : ""}
+  const fullName = displayValue(candidate.fullName);
+  const partyLine = displayValue(candidate.partyName) || displayValue(candidate.party) || "Não informado";
+  return `<a class="tse-candidate-card" href="${path}" data-route="${path}">
+    <div class="tse-candidate-photo">${photoMarkup(candidate)}</div>
+    <div class="tse-candidate-main">
+      <div class="tse-candidate-head">
+        <span class="tse-candidate-number">${esc(candidate.number || "—")}</span>
+        <h3 class="tse-candidate-name">${esc(candidate.name || candidate.fullName)}</h3>
+      </div>
+      ${fullName && fullName !== (candidate.name || "") ? `<p class="tse-candidate-sub">${esc(fullName)}</p>` : ""}
+      <dl class="tse-candidate-facts">
+        <div><dt>Partido</dt><dd>${esc(partyLine)}</dd></div>
+        <div><dt>Situação</dt><dd>${statusTag(reg || "Não informada", reg)}</dd></div>
+        ${ballot ? `<div><dt>Totalização</dt><dd>${statusTag(ballot, ballot)}</dd></div>` : ""}
+        ${coalition ? `<div><dt>Coligação</dt><dd>${esc(coalition)}</dd></div>` : ""}
+      </dl>
     </div>
+    <span class="tse-candidate-go" aria-hidden="true">${icon("chevron")}</span>
   </a>`;
 }
 
@@ -231,10 +248,10 @@ function renderCandidateMetrics(candidates) {
   const deferidos = list.filter(c => /deferid/i.test(String(c.registrationStatus || c.status))).length;
   const concorrendo = list.filter(c => /concorrendo/i.test(String(c.ballotStatus || ""))).length;
   root.innerHTML = `
-    <article><span>Candidaturas no cargo</span><strong>${fmt.format(list.length)}</strong><small>Fonte DivulgaCandContas</small></article>
-    <article><span>Partidos distintos</span><strong>${fmt.format(parties)}</strong><small>Siglas registradas</small></article>
-    <article><span>Registro deferido</span><strong>${fmt.format(deferidos)}</strong><small>Situação cadastral</small></article>
-    <article><span>Concorrendo</span><strong>${fmt.format(concorrendo)}</strong><small>Totalização oficial</small></article>`;
+    <article><span>Candidaturas</span><strong>${fmt.format(list.length)}</strong><small>No cargo selecionado</small></article>
+    <article><span>Partidos</span><strong>${fmt.format(parties)}</strong><small>Siglas distintas</small></article>
+    <article><span>Deferidas</span><strong>${fmt.format(deferidos)}</strong><small>Situação do registro</small></article>
+    <article><span>Concorrendo</span><strong>${fmt.format(concorrendo)}</strong><small>Totalização</small></article>`;
 }
 
 function renderCandidateDetailView(candidate, office, data) {
@@ -287,26 +304,29 @@ function renderCandidateDetailView(candidate, office, data) {
     patrimonio ? factSection("Patrimônio declarado", patrimonio) : "",
     contato ? factSection("Contatos publicados", contato) : ""
   ].filter(Boolean).join("");
-  const chips = [reg, ballot && ballot !== reg ? ballot : "", candidate.coalition].filter(Boolean).map(t => `<span class="candidacy-chip ${statusClass(t)}">${esc(t)}</span>`).join("");
-  return `<div class="detail-hero candidacy-detail-hero">
+  const tags = [reg, ballot && ballot !== reg ? ballot : ""].filter(Boolean).map(t => statusTag(t, t)).join("");
+  return `<p class="tse-ficha-back"><a class="btn btn-tse btn-tse-link" href="/candidatos" data-route="/candidatos">${icon("back")} Voltar à lista de candidaturas</a></p>
+    <header class="tse-ficha-banner">
+      <p class="tse-ficha-kicker">${esc(officeLabel(office))} · ${esc(scope)} · Eleições 2026</p>
+      <h1>${esc(candidate.name || candidate.fullName)}</h1>
+    </header>
+    <div class="tse-ficha-intro">
       ${photoMarkup(candidate, true)}
-      <div class="detail-title">
-        <span class="eyebrow">${esc(officeLabel(office).toUpperCase())} • ${esc(scope)} • 2026</span>
-        <h1>${esc(candidate.name || candidate.fullName)}</h1>
-        <p class="detail-subname">${esc(candidate.fullName || "")}</p>
-        <div class="detail-chips">${chips || `<span class="status">${esc(reg || "Situação não informada")}</span>`}</div>
-      </div>
-      <div class="detail-hero-side">
-        <div class="detail-number" aria-label="Número de urna">${esc(candidate.number || "—")}</div>
-        <p class="detail-party-block"><strong>${esc(candidate.party || "—")}</strong>${candidate.partyName ? `<span>${esc(candidate.partyName)}</span>` : ""}</p>
-        <div class="detail-actions">
-          <button class="btn ghost" type="button" id="printCandidate">Imprimir / PDF</button>
-          <a class="btn secondary" target="_blank" rel="noopener" href="${esc(sourceLink)}">Ficha no DivulgaCand ↗</a>
+      <div class="tse-ficha-intro-main">
+        <div class="tse-ficha-number-row">
+          <div class="tse-ficha-number" aria-label="Número de urna">${esc(candidate.number || "—")}</div>
+          <div class="tse-ficha-tags">${tags || statusTag(reg || "Situação não informada", reg)}</div>
+        </div>
+        <p class="tse-ficha-subname">${esc(candidate.fullName || "")}</p>
+        <p class="tse-ficha-party"><strong>${esc(candidate.party || "—")}</strong>${candidate.partyName ? ` — ${esc(candidate.partyName)}` : ""}${candidate.coalition ? `<br><span>Coligação: ${esc(candidate.coalition)}</span>` : ""}</p>
+        <div class="tse-ficha-actions">
+          <button class="btn btn-tse btn-tse-ghost" type="button" id="printCandidate">${icon("print")} Imprimir</button>
+          <a class="btn btn-tse btn-tse-primary" target="_blank" rel="noopener" href="${esc(sourceLink)}">${icon("external")} Ver no DivulgaCandContas</a>
         </div>
       </div>
     </div>
-    <div class="detail-sections">${sections || `<div class="empty">A fonte não retornou campos adicionais para esta candidatura.</div>`}</div>
-    <div class="notice">Informações conforme DivulgaCandContas (TSE). Registro, totalização e patrimônio podem ser atualizados pela Justiça Eleitoral.</div>
+    <div class="tse-ficha-body">${sections || `<div class="empty" style="margin:1rem">A fonte não retornou campos adicionais para esta candidatura.</div>`}</div>
+    <div class="notice">Dados publicados pelo Tribunal Superior Eleitoral via DivulgaCandContas. Situação de registro e totalização podem ser alteradas por decisão da Justiça Eleitoral.</div>
     <div class="data-meta">${dataMeta(data)}</div>`;
 }
 
@@ -397,7 +417,7 @@ function renderCandidateCatalog() {
   const list = filteredCandidates(), f = state.candidateFilters, totalPages = Math.max(1, Math.ceil(list.length / f.pageSize));
   f.page = Math.min(f.page, totalPages);
   const pageItems = list.slice((f.page - 1) * f.pageSize, f.page * f.pageSize);
-  $("#candidateSummary").textContent = `${fmt.format(list.length)} candidaturas exibidas · ${officeLabel(state.office)}`;
+  $("#candidateSummary").textContent = `${fmt.format(list.length)} candidatura(s) encontrada(s) · ${officeLabel(state.office)} · Maranhão 2026`;
   const root = $("#candidateCatalog"); root.innerHTML = pageItems.length ? pageItems.map(c => candidateCard(c, state.office)).join("") : `<div class="empty">Nenhum resultado encontrado.</div>`;
   wireImageFallbacks(root); renderPagination($("#candidatePagination"), f.page, totalPages, page => { f.page = page; renderCandidateCatalog(); window.scrollTo({ top: 180, behavior: "smooth" }); });
 }

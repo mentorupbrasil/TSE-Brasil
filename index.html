@@ -14,8 +14,17 @@
   <title>Cívica MA — Eleições 2026</title>
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="stylesheet" href="/assets/candidacies.css">
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" class="sr-only" aria-hidden="true" focusable="false">
+  <symbol id="ico-filter" viewBox="0 0 24 24"><path d="M4 6h16v2H4V6zm3 5h10v2H7v-2zm3 5h4v2h-4v-2z"/></symbol>
+  <symbol id="ico-download" viewBox="0 0 24 24"><path d="M12 3a1 1 0 0 1 1 1v9.59l2.3-2.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.42l2.3 2.3V4a1 1 0 0 1 1-1zm-7 14a1 1 0 0 1 1 1v2h12v-2a1 1 0 1 1 2 0v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1z"/></symbol>
+  <symbol id="ico-external" viewBox="0 0 24 24"><path d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3zM5 5h6v2H7v10h10v-4h2v6H5V5z"/></symbol>
+  <symbol id="ico-chevron" viewBox="0 0 24 24"><path d="M10 6l6 6-6 6V6z"/></symbol>
+  <symbol id="ico-print" viewBox="0 0 24 24"><path d="M7 3h10v4H7V3zm-4 8h2v8h12v-8h2a2 2 0 0 0 2-2V7H3v2a2 2 0 0 0 2 2zm4 6h8v4H7v-4z"/></symbol>
+  <symbol id="ico-back" viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6V6z"/></symbol>
+</svg>
 <a class="skip-link" href="#mainContent">Ir para o conteúdo</a>
 <div class="app-shell">
   <header class="topbar">
@@ -45,7 +54,7 @@
     </nav>
     <div class="sidebar-meta">
       <div><b>Portal independente</b><span>Organiza dados públicos da Justiça Eleitoral. Não é site oficial do TSE ou TRE-MA.</span></div>
-      <div class="sidebar-version">v7.1</div>
+      <div class="sidebar-version">v7.2</div>
     </div>
   </aside>
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
@@ -113,26 +122,41 @@
       </section>
     </section>
 
-    <section class="page" id="page-candidates" data-page="candidates">
-      <div class="page-head candidacy-head">
-        <div><span class="eyebrow">DIVULGACANDCONTAS • TSE</span><h1>Candidaturas registradas</h1><p>Fichas oficiais com foto, número de urna, partido, coligação e situação de registro — Eleições Gerais 2026, Maranhão.</p></div>
-        <div class="toolbar"><button class="btn ghost" id="exportCandidatesCsv">Exportar CSV</button><button class="btn ghost" id="exportCandidatesXls">Exportar Excel</button></div>
-      </div>
-      <div class="metrics four candidacy-metrics" id="candidateMetrics" aria-live="polite"></div>
-      <div class="filter-panel candidacy-filters">
-        <label>Cargo<select id="candidateOffice"></select></label>
-        <label>Partido<select id="candidateParty"><option value="">Todos</option></select></label>
-        <label>Situação<select id="candidateStatus"><option value="">Todas</option></select></label>
-        <label class="grow">Busca<input id="candidateSearch" placeholder="Nome, número ou partido"></label>
-        <label>Ordenar<select id="candidateSort"><option value="name">Nome</option><option value="number">Número</option><option value="party">Partido</option></select></label>
-      </div>
+    <section class="page candidacy-page" id="page-candidates" data-page="candidates">
+      <header class="tse-page-header">
+        <div class="tse-page-header-row">
+          <div>
+            <p class="eyebrow">DivulgaCandContas · Tribunal Superior Eleitoral</p>
+            <h1>Candidaturas registradas</h1>
+            <p>Consulta às informações publicadas pela Justiça Eleitoral sobre os registros de candidatura nas Eleições Gerais de 2026 no Maranhão.</p>
+          </div>
+          <div class="tse-toolbar">
+            <button type="button" class="btn btn-tse btn-tse-secondary" id="exportCandidatesCsv"><svg class="icon" aria-hidden="true"><use href="#ico-download"/></svg>Exportar CSV</button>
+            <button type="button" class="btn btn-tse btn-tse-secondary" id="exportCandidatesXls"><svg class="icon" aria-hidden="true"><use href="#ico-download"/></svg>Exportar Excel</button>
+          </div>
+        </div>
+      </header>
+      <div class="tse-stats" id="candidateMetrics" aria-live="polite"></div>
+      <section class="tse-panel" aria-labelledby="candidacyFiltersTitle">
+        <div class="tse-panel-head">
+          <svg class="icon" aria-hidden="true"><use href="#ico-filter"/></svg>
+          <h2 id="candidacyFiltersTitle">Filtrar candidaturas</h2>
+        </div>
+        <div class="tse-form-grid">
+          <div class="tse-field"><label for="candidateOffice">Cargo</label><select id="candidateOffice"></select></div>
+          <div class="tse-field"><label for="candidateParty">Partido</label><select id="candidateParty"><option value="">Todos</option></select></div>
+          <div class="tse-field"><label for="candidateStatus">Situação</label><select id="candidateStatus"><option value="">Todas</option></select></div>
+          <div class="tse-field"><label for="candidateSort">Ordenar por</label><select id="candidateSort"><option value="name">Nome de urna</option><option value="number">Número</option><option value="party">Partido</option></select></div>
+          <div class="tse-field tse-field-span2"><label for="candidateSearch">Pesquisar</label><input id="candidateSearch" type="search" placeholder="Nome, número ou sigla do partido" autocomplete="off"></div>
+        </div>
+      </section>
       <div class="data-meta" id="candidateMeta"></div>
-      <div class="summary-line" id="candidateSummary"></div>
-      <div id="candidateCatalog" class="candidate-grid"></div>
+      <div class="tse-result-bar" id="candidateSummary"></div>
+      <div id="candidateCatalog" class="candidate-grid tse-candidate-list"></div>
       <div class="pagination" id="candidatePagination"></div>
     </section>
 
-    <section class="page" id="page-candidate-detail" data-page="candidate-detail">
+    <section class="page candidacy-page" id="page-candidate-detail" data-page="candidate-detail">
       <div id="candidateDetail"></div>
     </section>
 
